@@ -6,3 +6,6 @@ erros.json
 /message/__pycache__/
 /onedrive/__pycache__/
 /telegram/__pycache__/
+/googleConnection/__pycache__/
+credentialsGoogle.json
+token.json

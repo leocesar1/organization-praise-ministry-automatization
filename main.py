@@ -1,5 +1,7 @@
 from onedrive.manager import OneDrive
+
 from telegram.manager import TelegramBot
+from googleConnection.manager import GoogleSheet
 from json import loads, dumps, load, dump
 from requests import get
 from sys import stdout
@@ -12,7 +14,7 @@ bot = TelegramBot()
 
 lista = onedrive.getFileList()
 
-with open("sucessos.json", "r", encoding="utf-8") as file:
+with open("message/sucessos.json", "r", encoding="utf-8") as file:
     successList = load(file)["data"]
 
 erros = []
@@ -62,7 +64,7 @@ print("quantidade de sucessos = "+str(len(sucessos)))
 print("sucessos = "+str(sucessos))
 
 
-with open("sucessos.json", "r", encoding="utf-8") as file:
+with open("message/sucessos.json", "r", encoding="utf-8") as file:
     sucessosNew = load(file)
 
 for item in sucessos:
@@ -70,5 +72,23 @@ for item in sucessos:
         sucessosNew["data"][key] = value
 
 json_object = dumps(sucessosNew, indent=4)
-with open("sucessos.json", "w", encoding="utf-8") as file:
+with open("message/sucessos.json", "w", encoding="utf-8") as file:
     file.write(json_object)
+
+sheet = GoogleSheet()
+detailsOfCategories = sheet.getAllMusicDetails()
+
+for key, value in detailsOfCategories.items():
+    # pega id da mensagem
+    id = sucessosNew["data"][key]
+    # print(id)
+    # monta novo caption
+    
+    newCaption = bot.makeCaption(bot.getAudioDetails(key))+f'{value}'
+    # print(newCaption)
+    # inclui detalhes (value)
+    print(bot.updateCaption(id,newCaption))
+
+# print(detailsOfCategories)
+
+print(sucessosNew["data"].keys())

@@ -32,8 +32,7 @@ class TelegramBot(metaclass=Metaclass):
                 details = self.getAudioDetails(
                     folderName=folderName, fileName=key)
 
-            caption = None if contador < len(
-                files) else self.makeCaption(details)
+            caption = None if contador != 1 else self.makeCaption(details)
 
             audioFiles.append(self.makeInputMediaAudio(
                 value, caption=caption, title=details["title"], artist=details["artist"]))
@@ -55,7 +54,7 @@ class TelegramBot(metaclass=Metaclass):
 """
 
     def getAudioDetails(self, folderName=None, fileName=None):
-
+        fileName ='' if fileName is None else fileName
         if len(fileName) > 12:
             array = fileName
         else:
@@ -103,3 +102,15 @@ class TelegramBot(metaclass=Metaclass):
 
     def makeInputMediaAudio(self, content, caption=None, title=None, artist=None):
         return telebot.types.InputMediaAudio(media=content, title=title, caption=caption, performer=artist, parse_mode="MarkdownV2")
+
+    def updateCaption(self,messageId, newCaption):
+        try:
+        # return self.bot.copy_message(chat_id=self._chatId, from_chat_id=self._chatId, message_id = messageId)
+            teste = telebot.types.MessageEntity(type="hashtag", offset=4, length=10)
+            self.bot.edit_message_caption(
+                caption = newCaption, chat_id=self._chatId, message_id=messageId,caption_entities=[teste])
+        # print(msg.text)
+            msg = "done"
+        except:
+            msg = "not updated"
+        return msg
