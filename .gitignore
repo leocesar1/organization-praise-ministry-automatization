@@ -1,0 +1,8 @@
+onedrive/credentials.json
+/venv/
+credentials.json
+erros.json
+/default/__pycache__/
+/message/__pycache__/
+/onedrive/__pycache__/
+/telegram/__pycache__/
