@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<style>
+  h1 {
+    font-family: "Ubuntu", sans-serif;
+  }
+  .info {
+    border-radius: 1% 1%;
+    background-color: #f1f1f1;
+  }
+  .info.legend {
+    background-color: none;
+  }
+  .title {
+    color: black;
+    text-align: center;
+    margin: 25px;
+  }
+  h2 {
+  }
+  fieldset {
+    height: auto;
+  }
+  .subtitle {
+    font-size: 30px;
+    color: black;
+    text-align: center;
+    margin: -25px 0 50px 0px;
+    font-style: italic;
+    font-weight: normal;
+  }
+  body {
+    padding: 20px;
+    font-size: 30px;
+    margin: 50px;
+    font-family: "Lora", serif;
+  }
+  .content {
+    position: relative;
+    margin: auto;
+    justify-content: center;
+  }
+  .region {
+    margin-top: 30px;
+    justify-content: center;
+    margin-bottom: 30px;
+    max-width: 95%;
+    border: 1px black solid;
+    border-radius: 0.4em;
+  }
+  .region-title {
+    margin-left: 0.1em;
+    padding: 0.5em 0.1em;
+    color: black;
+    background-color: #f1f1f1;
+  }
+  .region-title-abrev {
+    background-color: rgb(0, 0, 0);
+    color: white;
+    font: bold 18px/16px Helvetica, Verdana, Tahoma;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    margin-left: 0.6em;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 5px;
+  }
+  .line {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .chord-letter {
+    display: flex;
+    flex-direction: column;
+    padding: 0 5px;
+    align-items: center;
+  }
+  .chord {
+    font-style: italic;
+    font-weight: bold;
+    font-size: 25px;
+    color: rgb(0, 0, 118);
+  }
+  .theme-table {
+    font: bold 15px/13px "Ubuntu", sans-serif;
+  }
+  .map {
+    line-height: 1.2em;
+    overflow-wrap: break-word;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 10px;
+    align-content: space-between;
+  }
+  .theme-column {
+    line-height: 1.2em;
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    justify-content: space-around;
+  }
+  .theme-column-text {
+    line-height: 1.2em;
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    display: -o-flex;
+    display: flex;
+    justify-content: space-around;
+    flex-direction: column;
+  }
+  .theme-values {
+    border-radius: 20px;
+    background-color: rgb(78, 87, 79);
+    margin-right: 5px;
+    color: white;
+    font: bold 12px/10px Helvetica, Verdana, Tahoma;
+    /* min-width: 14px; */
+    padding: 4px 5px 6px 5px;
+    text-align: center;
+  }
+  .map-values {
+    position: relative;
+    background-color: rgb(0, 0, 0);
+    color: white;
+    font: bold 18px/16px Helvetica, Verdana, Tahoma;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    margin-right: 10px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 5px;
+  }
+
+  .map-values-legend {
+    position: absolute;
+    top: 0;
+    right: 0;
+    border: 2px solid rgb(0, 0, 0);
+    background-color: rgb(255, 255, 255);
+    color: rgb(7, 7, 7);
+    font: bold 13px/10px Ubuntu, Verdana, Tahoma;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin: auto;
+    width: 16px;
+    height: 16px;
+    text-align: center;
+  }
+  .collapsible {
+    cursor: pointer;
+    background-color: rgb(1, 84, 1);
+    border: 2px solid white;
+    border-radius: 12px; /* one half of ( (border * 2) + height + padding ) */
+    box-shadow: 1px 1px 1px black;
+    color: white;
+    font: bold 15px/13px Helvetica, Verdana, Tahoma;
+    height: 16px;
+    min-width: 14px;
+    padding: 4px 5px 3px 5px;
+    text-align: center;
+  }
+
+  .collapsible:after {
+    content: "+";
+    background-color: rgb(1, 84, 1);
+  }
+
+  .active:after {
+    content: "-";
+    background-color: rgb(1, 84, 1);
+  }
+
+  .content-compress {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+    background-color: #f1f1f1;
+  }
+
+  .column {
+    float: left;
+    width: 100%;
+    padding: 3px;
+    margin: 1%;
+  }
+
+  .row:after {
+    content: "";
+    float: center;
+    display: table;
+    clear: both;
+  }
+
+  @media screen and (max-width: 700px) {
+    .column {
+      width: 98%;
+    }
+  }
+</style>
+<head>
+        <meta charset="UTF-8">
+  <title>A Bênção</title>
+</head>
+        <body>
+        <h1 class='title'>A Bênção</h1>
+        <h2 class='subtitle'>Gabriel Guedes - Nívea Soares</h2>
+        <fieldset class="info">
+    <legend align="right" class="legend collapsible active">
+      Informações Gerais
+    </legend>
+    <div class="content-compress" style="max-height: 900000px;"><table class="theme-table"> 
+        <tr>
+          <td>Bpm</td>
+          <td class="theme-column">70.0</td>
+        </tr>
+
+        <tr>
+          <td>Compass</td>
+          <td class="theme-column">4/4</td>
+        </tr>
+
+        <tr>
+          <td>Key</td>
+          <td class="theme-column">Bb</td>
+        </tr>
+
+        <tr>
+          <td>Duration</td>
+          <td class="theme-column">6:00</td>
+        </tr>
+
+        <tr>
+          <td>Year</td>
+          <td class="theme-column">2020</td>
+        </tr>
+</table></div></fieldset><br>
+        <fieldset class="info">
+    <legend align="right" class="legend collapsible active">
+      Mapa
+    </legend>
+    <div class="content-compress" style="max-height: 900000px;">
+        <div class="content row"><div class="map"><div class="map-values" alt="Introdução"><span>In</span></div><div class="map-values" alt="Verso"><span>V</span></div><div class="map-values" alt="Refrão"><span>R</span></div><div class="map-values" alt="Verso"><span>V</span></div><div class="map-values" alt="Refrão"><span>R</span></div><div class="map-values" alt="Ponte"><div class="map-values-legend" >4</div><span>P</span></div><div class="map-values" alt="Ponte 2"><span>P2</span></div><div class="map-values" alt="Ponte 3"><span>P3</span></div><div class="map-values" alt="Repete"><div class="map-values-legend" >4</div><span>Re</span></div><div class="map-values" alt="Refrão"><span>R</span></div><div class="map-values" alt="Ponte"><div class="map-values-legend" >2</div><span>P</span></div><div class="map-values" alt="Ponte 2"><span>P2</span></div><div class="map-values" alt="Ponte 3"><span>P3</span></div><div class="map-values" alt="Repete"><div class="map-values-legend" >4</div><span>Re</span></div><div class="map-values" alt="Refrão"><span>R</span></div><div class="map-values" alt="Final"><span>F</span></div></div></div></div>
+        </fieldset><br><fieldset class="info">
+    <legend align="right" class="legend collapsible active">
+      Letra e Cifra
+    </legend>
+    <div class="content-compress" style="max-height: 900000px;">
+        <div class="content row"><fieldset  class="region column"> <legend><span class="region-title-abrev">In</span><span class="region-title">Introdução</span></legend><br></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">V</span><span class="region-title">Verso</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Que o Senhor te  Abençoe</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E faça Brilhar seu rosto em Ti</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Que conceda  sua graça</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E te dê Paz</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">R</span><span class="region-title">Refrão</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">V</span><span class="region-title">Verso</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Que o Senhor te  Abençoe</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E faça Brilhar seu rosto em Ti</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Que conceda  sua graça</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E te dê Paz</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">R</span><span class="region-title">Refrão</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P</span><span class="region-title">Ponte</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Que a benção se derrame</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Até mil gerações</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Tua familia e teus filhos</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E os filhos de teus filhos.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P2</span><span class="region-title">Ponte 2</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Sua Presença te acompanhe</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Por detrás e por diante</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Do Teu Lado e Em Ti</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>É Contigo, É em Ti</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P3</span><span class="region-title">Ponte 3</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>E de noite e de dia</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Tua entrada e saída</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Em teu riso, em teu choro</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>É contigo, É por Ti.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">Re</span><span class="region-title">Repete</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>É contigo, É por Ti.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">R</span><span class="region-title">Refrão</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P</span><span class="region-title">Ponte</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Que a benção se derrame</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Até mil gerações</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Tua familia e teus filhos</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>E os filhos de teus filhos.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P2</span><span class="region-title">Ponte 2</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Sua Presença te acompanhe</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Por detrás e por diante</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Do Teu Lado e Em Ti</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>É Contigo, É em Ti</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">P3</span><span class="region-title">Ponte 3</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>E de noite e de dia</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Tua entrada e saída</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Em teu riso, em teu choro</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>É contigo, É por Ti.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">Re</span><span class="region-title">Repete</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>É contigo, É por Ti.</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">R</span><span class="region-title">Refrão</span></legend><br><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém, Amém</div></div><div class="line"><div class="chord-letter"><span class='chord'></span>Amém</div></div></fieldset ><fieldset  class="region column"> <legend><span class="region-title-abrev">F</span><span class="region-title">Final</span></legend><br></fieldset ></div></div>
+        </fieldset> 
+<script>
+    var coll = document.getElementsByClassName("collapsible");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+      coll[i].addEventListener("click", function () {
+        this.classList.toggle("active");
+        var content = this.nextElementSibling;
+        if (content.style.maxHeight) {
+          content.style.maxHeight = null;
+        } else {
+          content.style.maxHeight = content.scrollHeight + "px";
+        }
+      });
+    }
+  </script>
+
+        </body></html>
+        
