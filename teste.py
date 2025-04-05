@@ -1,34 +1,42 @@
-from map.manager import *
+import re
 
-# scraper = MultitracksScraper(
-#     url="https://www.multitracks.com.br/songs/fhop-music/Infindavel/Ruja-o-Leao/"
-# )
+def convert_google_sheet_url(url):
+    # Regular expression to match and capture the necessary part of the URL
+    pattern = r'https://docs\.google\.com/spreadsheets/d/([a-zA-Z0-9-_]+)(/edit#gid=(\d+)|/edit.*)?'
 
-# with open(f"{scraper.getTitle()}.html", "w", encoding="utf-8") as file:
-#     file.write(scraper.makeFile())
+    # Replace function to construct the new URL for CSV export
+    # If gid is present in the URL, it includes it in the export URL, otherwise, it's omitted
+    replacement = lambda m: f'https://docs.google.com/spreadsheets/d/{m.group(1)}/export?' + (f'gid={m.group(3)}&' if m.group(3) else '') + 'format=csv'
 
-# url = "https://www.google.com/search?q=A Bênção Gabriel Guedes + Nívea Soares Bb BPM:  70  4/4"
+    # Replace using regex
+    new_url = re.sub(pattern, replacement, url)
 
-# scraper = Scraper()
-# soap = scraper.get_soap(
-#     url=url,
-# )
+    return new_url
 
-# result = soap.find("div", id="search").find_all("a")
-# print(result[0]["href"])
-# from telegram.manager import TelegramBot
+import pandas as pd
+import numpy as np
+from datetime import date, datetime
 
-# bot = TelegramBot()
-# bot.setTopicId(bot.getDefaultsValues["message_thread_id_map"])
-# name = "A Bênção - Gabriel Guedes + Nívea Soares - Bb - 70BPM - 4.4"
-# with open(f"{name}.html", "rb") as file:
-#     content = file.read()
-# bot.sendFile(name, content)
+# Replace with your modified URL
 
-from googlesearch import search
+def isHoliday():
+    url = 'https://docs.google.com/spreadsheets/d/1OKD8RmkIqZvezzMurGF32gRYoU4DcHNEBRwZkJzwzjw/edit#gid=1896094214'
+    new_url = convert_google_sheet_url(url)
+    df = pd.read_csv(new_url)
 
-query = (
-    "A Bênção - Gabriel Guedes + Nívea Soares - Bb - 70BPM - 4.4" + " multitracks.com"
-)
+    df['Fim']   = np.where(df['Fim'].isnull(), df['Inicio'], df['Fim'])
 
-print(search(query, tld="co.in", num=1, stop=1, pause=2))
+    df['start'] = pd.to_datetime(df['Inicio']+" 00:00:00", format="%d/%m/%Y %H:%M:%S")
+    df['end']   = pd.to_datetime(df['Fim']+" 23:59:59", format="%d/%m/%Y %H:%M:%S")
+
+    df['holiday'] = df.apply(lambda x: verifyHoliday(x['start'], x['end']), axis=1)
+
+    print(df.head())
+    holidayDataframe = df[df['holiday'] == True]['Motivo']
+    return( holidayDataframe.size > 0, holidayDataframe.iloc[0] if holidayDataframe.size > 0 else 'Dia normal')
+
+def verifyHoliday(start,end,target = datetime.now()):
+    return True if start <= target <= end else False
+# trata fim vazio
+
+print(isHoliday())

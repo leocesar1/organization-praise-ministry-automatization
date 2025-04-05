@@ -13,7 +13,7 @@ class TelegramBot(metaclass=Metaclass):
             if token is not None
             else self.getDefaultsValues["token"]["praiseMinistryBot"]
         )
-        self.bot = telebot.TeleBot(self.token, parse_mode="MarkdownV2", num_threads=10)
+        self.bot = telebot.TeleBot(self.token, parse_mode="MarkdownV2", num_threads=1)
         self.setChatId(self.getDefaultsValues["chat_id"])
         self.setTopicId(self.getDefaultsValues["message_thread_id"])
 
@@ -63,9 +63,17 @@ class TelegramBot(metaclass=Metaclass):
             )
             # print(audioFiles)
             contador += 1
-        result = self.bot.send_media_group(
-            self._chatId, media=audioFiles, timeout=400, message_thread_id=self._topicId
-        )
+        try:
+            result = self.bot.send_media_group(
+                self._chatId, media=audioFiles, timeout=900000, message_thread_id=self._topicId
+            )
+        except:
+            for item in audioFiles:
+                result = self.bot.send_media_group(
+                self._chatId, media=[item], timeout=900000, message_thread_id=self._topicId
+            )
+
+        # print(result)
 
         return result[0].message_id
 
@@ -123,9 +131,10 @@ class TelegramBot(metaclass=Metaclass):
             .replace(".mp3", "")
             .replace(")", "]")
             .replace("(", "[")
+            .replace("_", "\_")
             .replace(".", ",")
             .replace("--", "+")
-            # .replace("+", "e")
+            .replace("+", "e")
             .replace("[ELITE]", "")
             .split("-")
         )
