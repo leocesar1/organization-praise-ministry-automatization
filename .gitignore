@@ -1,11 +1,14 @@
-onedrive/credentials.json
-/venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.google-cookie
+
+# Arquivos de credenciais e tokens não devem ser commitados
 credentials.json
-erros.json
-/default/__pycache__/
-/message/__pycache__/
-/onedrive/__pycache__/
-/telegram/__pycache__/
-/googleConnection/__pycache__/
-credentialsGoogle.json
-token.json
+onedrive_token.json
+onedrive_token.json
+
+# Caso o usuário baixe o DB manualmente
+music_database*.json
