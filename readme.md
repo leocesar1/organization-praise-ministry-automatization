@@ -1,15 +1,15 @@
 # Praise Ministry Music Sync 🎵
 
-Este projeto tem como objetivo automatizar o processo de backup e compartilhamento das trilhas (multitracks, renders, vozes e instrumentos) do Ministério de Louvor. 
+Este projeto tem como objetivo automatizar o processo de backup e compartilhamento das trilhas (multitracks, renders, vozes e instrumentos) e mapas de arranjo do Ministério de Louvor. 
 
-Ele varre uma pasta específica do OneDrive contendo os áudios e os publica automaticamente em um Tópico no Telegram, gerando um banco de dados inteligente para garantir que nenhuma música seja postada duas vezes.
+Ele varre uma pasta específica do OneDrive contendo os áudios e arquivos do Reaper (`.rpp`) e os publica automaticamente em Tópicos distintos no Telegram (um para arquivos de áudio e outro para mapas de arranjo), gerando um banco de dados inteligente para garantir consistência e evitar postagens duplicadas.
 
 ## Estrutura do Projeto
 
-O projeto foi refatorado para usar uma arquitetura limpa e modular:
-- `core/`: Contém os modelos de dados e a lógica de parser de nomes dos arquivos.
+O projeto adota uma arquitetura limpa e modular:
+- `core/`: Contém os modelos de dados, o parser de nomes de arquivos e o parser de arquivos `.rpp` Reaper.
 - `services/`: Classes de integração com APIs externas (`OneDriveClient`, `TelegramBot`, `TelegramStorage`).
-- `runners/`: Scripts executáveis (o sincronizador principal e os utilitários).
+- `runners/`: Scripts executáveis (sincronizador de música, sincronizador de arranjos e utilitários).
 - `default/`: Utilitários de leitura de credenciais.
 
 ## 1. Pré-requisitos e Instalação
@@ -32,13 +32,14 @@ Crie um arquivo chamado `credentials.json` na raiz do projeto copiando a estrutu
 3. Copie o **ID do aplicativo (cliente)** e cole em `onedrive.client_id`.
 4. No menu "Autenticação" do Azure, vá em "Configurações Avançadas" e marque **"Permitir fluxos de cliente público"** como **SIM**. (Sem isso, o login via terminal não funcionará).
 
-### B) Telegram (`token`, `chat_id`, `message_thread_id`)
+### B) Telegram (`token`, `chat_id`, `message_thread_id`, `arrangement_topic_id`)
 1. Crie um bot no [@BotFather](https://t.me/botfather) e copie o token para a propriedade correspondente no `credentials.json`.
-2. Para descobrir o `chat_id` do seu grupo e o `message_thread_id` do seu tópico, rode o script utilitário abaixo:
+2. Para descobrir o `chat_id` do seu grupo e o `message_thread_id` do seu tópico principal de músicas, rode o script utilitário abaixo:
    ```bash
    python get_telegram_ids.py
    ```
-3. Mande uma mensagem qualquer dentro do tópico desejado no Telegram e o terminal imprimirá os IDs para você copiar e colar.
+3. O bot agora publica mapas de arranjo em um tópico separado. Descubra o ID desse tópico e adicione em `arrangement_topic_id` nas configurações do Telegram.
+4. Mande uma mensagem qualquer dentro do tópico desejado no Telegram e o terminal imprimirá os IDs para você copiar e colar.
 
 > **Atenção:** O campo `storage_message_id` deve ficar em branco (`""`). Ele será preenchido automaticamente pelo script na primeira vez que rodar!
 
@@ -56,29 +57,46 @@ python -m runners.rename_onedrive
 python -m runners.rename_onedrive --execute
 ```
 
-### B) Sincronizador Principal (Sync)
+### B) Sincronizador Principal (Sync Music + Arranjos)
 Este é o script central que baixa do OneDrive e envia pro Telegram. 
-Ao rodar pela primeira vez, ele exibirá um link no terminal para você autorizar o OneDrive pelo navegador.
+Por padrão, ele realiza a sincronização dos áudios e **também do mapa de arranjo Reaper** (lendo o arquivo `.rpp` na raiz da pasta da música) vinculando a mensagem de áudio ao mapa por meio de um link na legenda.
 
 ```bash
-# Modo Teste: Envia apenas 1 música e para (Ótimo para validar a autenticação)
+# Modo Teste: Envia apenas 1 música (com mapa) e para
 python -m runners.sync_music --test
 
-# Modo de Lote: Processa até N músicas por vez e para
+# Modo de Lote: Processa até N músicas por vez
 python -m runners.sync_music --limit 5
 
-# Modo Completo: Sincroniza todas as músicas faltantes
+# Modo Completo: Sincroniza tudo
 python -m runners.sync_music
+
+# Sincroniza apenas os áudios (sem processar arquivos Reaper .rpp)
+python -m runners.sync_music --no-arrangement
 ```
 
-### C) Limpeza do Canal (Cleanup)
+### C) Sincronizador de Arranjos (Sync Arrangements)
+Runner focado exclusivamente na extração e publicação de mapas de arranjos a partir dos arquivos `.rpp`. Caso o áudio já esteja no Telegram, o script edita silenciosamente a mensagem original adicionando o link do mapa de arranjo.
+
+```bash
+# Executa a varredura normal de arranjos novos
+python -m runners.sync_arrangements
+
+# Força a re-postagem e re-leitura de todos os arquivos .rpp (editando mensagens existentes)
+python -m runners.sync_arrangements --update
+
+# Limita a execução no modo teste
+python -m runners.sync_arrangements --test
+```
+
+### D) Limpeza do Canal (Cleanup)
 Se você precisar resetar o seu banco de dados e apagar **todas** as mensagens do tópico de músicas do Telegram:
 ```bash
 python -m runners.cleanup_telegram
 ```
 *(Ele varre o canal inteiro, pede confirmação e apaga as mensagens, criando um terreno limpo).*
 
-### D) Remoção Pontual (Remove from DB)
+### E) Remoção Pontual (Remove from DB)
 Se você quer forçar o re-envio de apenas **uma música específica**, você pode apagá-la do JSON do Telegram sem ter que editar o arquivo manualmente:
 ```bash
 # Busca pelo nome e permite deletar do banco
@@ -92,3 +110,4 @@ O sistema entende dois padrões principais de pastas e arquivos no OneDrive:
 - Padrão B: `Instrumento _ Nome _ Tom _ Artista _ BPMbpm _ Compasso`
 
 *(Onde a tag `[Elite]` é opcional).*
+
