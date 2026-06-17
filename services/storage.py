@@ -104,8 +104,10 @@ class TelegramStorage:
 
     def mark_synced(self, folder_id: str, message_id: int, metadata) -> None:
         data = self.load()
+        existing = data.get(folder_id, {})
         data[folder_id] = {
             "message_id": message_id,
+            "arrangement_message_id": existing.get("arrangement_message_id"),
             "music_name": metadata.name,
             "artist": metadata.artist,
             "key": metadata.key,
@@ -117,11 +119,49 @@ class TelegramStorage:
         }
         self.save(data)
 
+    def mark_arrangement_synced(self, folder_id: str, arrangement_message_id: int, metadata=None) -> None:
+        data = self.load()
+        if folder_id in data:
+            data[folder_id]["arrangement_message_id"] = arrangement_message_id
+            if metadata:  # atualiza metadados se fornecidos
+                data[folder_id]["music_name"] = metadata.name
+                data[folder_id]["artist"] = metadata.artist
+                data[folder_id]["key"] = metadata.key
+                data[folder_id]["bpm"] = metadata.bpm
+                data[folder_id]["compass"] = metadata.compass
+                data[folder_id]["elite"] = metadata.elite
+                data[folder_id]["instrument"] = metadata.instrument
+        else:
+            if metadata:
+                data[folder_id] = {
+                    "message_id": None,
+                    "arrangement_message_id": arrangement_message_id,
+                    "music_name": metadata.name,
+                    "artist": metadata.artist,
+                    "key": metadata.key,
+                    "bpm": metadata.bpm,
+                    "compass": metadata.compass,
+                    "elite": metadata.elite,
+                    "instrument": metadata.instrument,
+                    "status": "success"
+                }
+            else:
+                data[folder_id] = {
+                    "message_id": None,
+                    "arrangement_message_id": arrangement_message_id,
+                    "music_name": "Desconhecido",
+                    "status": "success"
+                }
+        self.save(data)
+
     def mark_error(self, folder_id: str, error_msg: str, metadata=None) -> None:
         data = self.load()
+        existing = data.get(folder_id, {})
         entry = {
             "status": "error",
-            "error": str(error_msg)
+            "error": str(error_msg),
+            "message_id": existing.get("message_id"),
+            "arrangement_message_id": existing.get("arrangement_message_id")
         }
         if metadata:
             entry["music_name"] = metadata.name
@@ -136,3 +176,4 @@ class TelegramStorage:
             
         data[folder_id] = entry
         self.save(data)
+

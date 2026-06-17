@@ -13,6 +13,7 @@ class TelegramBot:
         self.bot = telebot.TeleBot(self.token, parse_mode="MarkdownV2", num_threads=1)
         self.chat_id = self.getDefaultsValues["chat_id"]
         self.topic_id = self.getDefaultsValues["message_thread_id"]
+        self.arrangement_topic_id = self.getDefaultsValues.get("arrangement_topic_id", self.topic_id)
 
     def escape_markdown(self, text: str) -> str:
         """Escapes markdown v2 reserved characters."""
@@ -23,7 +24,7 @@ class TelegramBot:
             text = text.replace(char, f'\\{char}')
         return text
 
-    def make_caption(self, metadata: MusicMetadata) -> str:
+    def make_caption(self, metadata: MusicMetadata, arrangement_message_id: int = None) -> str:
         caption = f"🎶 Música: *{self.escape_markdown(metadata.name)}*\n"
         caption += f"🎤 Intérprete: *{self.escape_markdown(metadata.artist)}*\n"
         caption += f"🎼 Tom Original: *{self.escape_markdown(metadata.key)}*\n"
@@ -36,6 +37,11 @@ class TelegramBot:
             
         if metadata.instrument:
             caption += f"🎸 Instrumento: *{self.escape_markdown(metadata.instrument)}*\n"
+            
+        if arrangement_message_id:
+            chat_clean = str(self.chat_id).replace("-100", "")
+            link = f"https://t.me/c/{chat_clean}/{arrangement_message_id}"
+            caption += f"\n📋 *[Ver Mapa de Arranjo]({link})*\n"
             
         return caption
 
@@ -58,7 +64,7 @@ class TelegramBot:
             parse_mode="MarkdownV2"
         )
 
-    def send_audio_group(self, metadata: MusicMetadata, files: Dict[str, bytes]) -> int:
+    def send_audio_group(self, metadata: MusicMetadata, files: Dict[str, bytes], arrangement_message_id: int = None) -> int:
         """Sends a group of audio files and returns the message ID of the first message."""
         if not files:
             raise ValueError("Nenhum arquivo para enviar")
@@ -67,7 +73,7 @@ class TelegramBot:
         is_first = True
         
         for filename, content in files.items():
-            caption = self.make_caption(metadata) if is_first else None
+            caption = self.make_caption(metadata, arrangement_message_id) if is_first else None
             
             # Construir nome de arquivo completo para carregamento individual
             complete_filename = f"{metadata.name} - {filename}"
@@ -138,6 +144,34 @@ class TelegramBot:
             )
         import os
         os.remove(filename)
+
+    def send_text_message(self, text: str, message_thread_id: int) -> int:
+        """Sends a text message and returns the message_id."""
+        msg = self.bot.send_message(
+            self.chat_id,
+            text,
+            parse_mode="MarkdownV2",
+            message_thread_id=message_thread_id
+        )
+        return msg.message_id
+
+    def edit_text_message(self, message_id: int, text: str) -> None:
+        """Edits an existing text message."""
+        self.bot.edit_message_text(
+            text,
+            chat_id=self.chat_id,
+            message_id=message_id,
+            parse_mode="MarkdownV2"
+        )
+
+    def edit_message_caption(self, message_id: int, caption: str) -> None:
+        """Edits the caption of an existing message (like the first audio in a media group)."""
+        self.bot.edit_message_caption(
+            chat_id=self.chat_id,
+            message_id=message_id,
+            caption=caption,
+            parse_mode="MarkdownV2"
+        )
 
     def get_document_content(self, file_id: str) -> bytes:
         """Downloads a document from Telegram."""

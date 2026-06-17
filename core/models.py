@@ -15,3 +15,5 @@ class TelegramRecord:
     folder_id: str
     message_id: int
     music_name: str     # nome para ordenação alfabética
+    arrangement_message_id: int | None = None
+

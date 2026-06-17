@@ -118,9 +118,21 @@ class OneDriveClient:
             
         return downloaded
 
+    def get_rpp_file(self, folder_id: str) -> tuple[str, bytes] | tuple[None, None]:
+        """Busca o arquivo .rpp no diretório pai da pasta '1 _ Renders' (folder_id)."""
+        files = self.get_folder_children(folder_id)
+        for file in files:
+            file_name = file["name"]
+            if file_name.lower().endswith(".rpp"):
+                logger.info(f"Encontrado arquivo Reaper: {file_name}. Baixando...")
+                content = self.download_file(file["id"])
+                return file_name, content
+        return None, None
+
     def rename_item(self, item_id: str, new_name: str) -> None:
         """Rename an item in OneDrive."""
         url = f"{self.base_url}/me/drive/items/{item_id}"
         payload = {"name": new_name}
         response = requests.patch(url, headers=self.headers, json=payload)
         response.raise_for_status()
+

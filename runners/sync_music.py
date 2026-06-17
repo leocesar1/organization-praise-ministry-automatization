@@ -9,7 +9,8 @@ from core.name_parser import parse_music_metadata
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def main(test_mode: bool = False, limit: int = None):
+def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = False):
+    with_arrangement = not no_arrangement
     onedrive = OneDriveClient()
     onedrive.authenticate()
     
@@ -29,14 +30,33 @@ def main(test_mode: bool = False, limit: int = None):
         
         if storage.is_synced(folder_id):
             logger.debug(f"Pula {folder_name} - já sincronizada")
+            # Se for solicitado o arranjo, podemos tentar sincronizar/atualizar mesmo se a música já estiver sincronizada
+            if with_arrangement:
+                try:
+                    from runners.sync_arrangements import sync_arrangement_for_folder
+                    sync_arrangement_for_folder(folder_id, folder_name, onedrive, bot, storage, force_update=False)
+                except Exception as e:
+                    logger.error(f"Erro ao sincronizar arranjo complementar para {folder_name}: {e}")
             continue
             
         try:
             logger.info(f"Processando nova música: {folder_name}")
             metadata = parse_music_metadata(folder_name)
-            render_files = onedrive.get_renders(folder_id)
             
-            message_id = bot.send_audio_group(metadata, render_files)
+            # 1. Sincroniza o arranjo primeiro para obter o ID da mensagem do arranjo (se houver e não for pulado)
+            arrangement_msg_id = None
+            if with_arrangement:
+                try:
+                    from runners.sync_arrangements import sync_arrangement_for_folder
+                    # Passa force_update=False por padrão para evitar re-downloads desnecessários
+                    arrangement_msg_id = sync_arrangement_for_folder(folder_id, folder_name, onedrive, bot, storage, force_update=False)
+                except Exception as e:
+                    logger.error(f"Erro ao sincronizar arranjo para {metadata.name}: {e}")
+
+            # 2. Obtém os renders e envia o grupo de áudio contendo o link na legenda
+            render_files = onedrive.get_renders(folder_id)
+            message_id = bot.send_audio_group(metadata, render_files, arrangement_message_id=arrangement_msg_id)
+            
             if message_id:
                 storage.mark_synced(folder_id, message_id, metadata=metadata)
                 processed += 1
@@ -64,6 +84,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sincroniza músicas do OneDrive para o Telegram.")
     parser.add_argument("--test", action="store_true", help="Processa apenas 1 música (modo teste)")
     parser.add_argument("--limit", type=int, default=None, help="Processa no máximo N músicas")
+    parser.add_argument("--no-arrangement", action="store_true", help="Não sincroniza o mapa de arranjo (.rpp)")
     args = parser.parse_args()
     
-    main(test_mode=args.test, limit=args.limit)
+    main(test_mode=args.test, limit=args.limit, no_arrangement=args.no_arrangement)
