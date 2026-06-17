@@ -44,8 +44,11 @@ class TelegramBot:
         clean_filename = filename.replace(".mp3", "").replace(".wav", "").replace(".m4a", "")
         file_meta = parse_music_metadata(clean_filename)
         
-        # O título será o instrumento se houver, senão o nome da música original
-        title = file_meta.instrument.capitalize() if file_meta.instrument else metadata.name
+        # O título será o nome da música + instrumento se houver, senão o nome da música original
+        if file_meta.instrument:
+            title = f"{metadata.name} - {file_meta.instrument.capitalize()}"
+        else:
+            title = metadata.name
         
         return telebot.types.InputMediaAudio(
             media=content,
@@ -65,7 +68,12 @@ class TelegramBot:
         
         for filename, content in files.items():
             caption = self.make_caption(metadata) if is_first else None
-            media = self.make_input_media_audio(filename, content, caption=caption, metadata=metadata)
+            
+            # Construir nome de arquivo completo para carregamento individual
+            complete_filename = f"{metadata.name} - {filename}"
+            media_content = (complete_filename, content)
+            
+            media = self.make_input_media_audio(filename, media_content, caption=caption, metadata=metadata)
             audio_medias.append(media)
             is_first = False
             
