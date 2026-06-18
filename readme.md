@@ -111,3 +111,21 @@ O sistema entende dois padrões principais de pastas e arquivos no OneDrive:
 
 *(Onde a tag `[Elite]` é opcional).*
 
+## 🎼 Extração de Cifras e Acordes (Reaper `.rpp`)
+
+O sincronizador possui suporte para ler arquivos `.rpp` do Reaper e gerar um mapa visual de cifras debaixo de cada região correspondente:
+1. **Identificação da Faixa:** O parser prioriza uma faixa MIDI nomeada como `"Cifras"` ou `"Acordes"`. Caso não exista, ele faz um fallback automático para a primeira faixa MIDI contendo eventos de texto.
+2. **Sincronização Temporal:** As posições das notas e eventos MIDI são convertidos de ticks para segundos usando o BPM do projeto ou o marcador `IGNTEMPO`.
+3. **Grade de Compassos (Chord Grid) com Síncopas e Antecipações:**
+   - Agrupa os acordes por região e formata os compassos na métrica do projeto (ex: 4/4).
+   - Usa o caractere de bloco espesso `┃` (`\u2503`) como divisor vertical para alinhamento legível em telas móveis.
+   - **Modificadores Rítmicos**:
+     - `←Acorde` (Antecipação): Indica que o acorde é tocado no contratempo (uma colcheia antes do tempo nominal).
+     - `→Acorde` (Atraso): Indica que o acorde é empurrado para o contratempo posterior (uma colcheia após o tempo nominal).
+   - **Slashe de Tempo Forte (`/`)**: Utilizado em compassos não uniformes para indicar a marcação das batidas fortes.
+   - **Modo Compacto Inteligente**:
+     - Compassos uniformes (onde um único acorde dura o compasso inteiro) são simplificados para apenas `┃ Grau ┃` (sem `/` desnecessários).
+     - `%` indica repetição do compasso inteiro e `-` representa silêncio ou compasso vazio.
+
+
+

@@ -10,13 +10,13 @@ from core.reaper_parser import parse_rpp_regions, format_arrangement_message
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: TelegramStorage, force_update: bool = False):
+def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: TelegramStorage, force_update: bool = False, validate_chords: bool = False):
     metadata = parse_music_metadata(folder_name)
     data = storage.load()
     existing_entry = data.get(folder_id, {})
     existing_msg_id = existing_entry.get("arrangement_message_id")
     
-    if existing_msg_id and not force_update:
+    if existing_msg_id and not force_update and not validate_chords:
         logger.debug(f"Pula {metadata.name} - arranjo já sincronizado")
         return existing_msg_id
 
@@ -33,13 +33,53 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
         rpp_text = rpp_content.decode("utf-8", errors="ignore")
         regions = parse_rpp_regions(rpp_text)
         
+        # Tenta obter o tom a partir dos metadados MIDI do RPP
+        try:
+            from core.reaper_parser import parse_rpp_keysig
+            keysig = parse_rpp_keysig(rpp_text)
+            if keysig:
+                logger.info(f"Tom extraído dos metadados MIDI do RPP: '{keysig}' (anterior era '{metadata.key}')")
+                metadata.key = keysig
+        except Exception as e:
+            logger.warning(f"Não foi possível obter tom do RPP: {e}")
+            
         if not regions:
             logger.warning(f"⚠️ Nenhuma região encontrada no arquivo .rpp para {metadata.name}")
             return None
             
+        # Parseia as cifras (se existirem)
+        chords = None
+        try:
+            from core.reaper_parser import parse_rpp_chords
+            chords = parse_rpp_chords(rpp_text, metadata.bpm)
+        except Exception as e:
+            logger.warning(f"Não foi possível processar cifras para {metadata.name}: {e}")
+            
+        if validate_chords and chords:
+            from core.chord_theory import PITCH_TO_NOTE, chord_to_roman
+            print(f"\n--- Relatório de Validação de Cifras ---")
+            print(f"Música: {metadata.name} | Tom: {metadata.key}")
+            print(f"{'Grau':<8} | {'Acorde':<8} | {'Pitches Esperados':<20} | {'Pitches Tocados':<20} | Status")
+            print("-" * 75)
+            for entry in chords:
+                if entry.match:
+                    grau = chord_to_roman(entry.name, metadata.key)
+                    expected_notes = ", ".join(PITCH_TO_NOTE[p] for p in entry.match.expected)
+                    played_notes = ", ".join(PITCH_TO_NOTE[p % 12] for p in entry.match.played)
+                    status_icon = "✅ OK" if entry.match.status == "ok" else ("⚠️ PARTIAL" if entry.match.status == "partial" else "❌ MISMATCH")
+                    print(f"{grau:<8} | {entry.name:<8} | {{{expected_notes}}:<18} | {{{played_notes}}:<18} | {status_icon}")
+                else:
+                    print(f"{'-':<8} | {entry.name:<8} | {'-':<18} | {'-':<18} | ❓ UNKNOWN")
+            print("-" * 75)
+            
         # Formata a mensagem para o Telegram
-        msg_text = format_arrangement_message(metadata, regions)
+        msg_text = format_arrangement_message(metadata, regions, chords=chords, debug_chords=validate_chords)
         
+        if validate_chords:
+            # Em modo de validação, evitamos publicar/salvar no Telegram
+            logger.info("Modo de validação ativo: publicação no Telegram evitada.")
+            return True
+
         # Publica ou atualiza no Telegram
         msg_id = None
         if existing_msg_id:
@@ -72,12 +112,10 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             
     except Exception as e:
         logger.error(f"Erro ao processar arranjo de {metadata.name}: {e}")
-        # Não marca como erro geral no storage para não estragar a sincronização de áudio,
-        # mas loga o erro.
         
     return None
 
-def main(test_mode: bool = False, limit: int = None, force_update: bool = False):
+def main(test_mode: bool = False, limit: int = None, force_update: bool = False, validate_chords: bool = False):
     onedrive = OneDriveClient()
     onedrive.authenticate()
     
@@ -101,7 +139,8 @@ def main(test_mode: bool = False, limit: int = None, force_update: bool = False)
             onedrive=onedrive,
             bot=bot,
             storage=storage,
-            force_update=force_update
+            force_update=force_update,
+            validate_chords=validate_chords
         )
         
         if success:
@@ -121,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="Processa apenas 1 arranjo (modo teste)")
     parser.add_argument("--limit", type=int, default=None, help="Processa no máximo N arranjos")
     parser.add_argument("--update", action="store_true", help="Força a atualização de arranjos já sincronizados")
+    parser.add_argument("--validate-chords", action="store_true", help="Valida a escrita das cifras comparando texto com as notas tocadas e exibe graus no terminal")
     args = parser.parse_args()
     
-    main(test_mode=args.test, limit=args.limit, force_update=args.update)
+    main(test_mode=args.test, limit=args.limit, force_update=args.update, validate_chords=args.validate_chords)
