@@ -255,46 +255,44 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                             unique_text_events.append(te)
                     text_events = unique_text_events
 
-                    # If we have no text events, but we have note events, we can infer chords from note groups
-                    if not text_events and note_ons:
-                        # Group notes that start close to each other (e.g. within 40 ticks)
-                        ticks_seen = set()
-                        for nt in canonical_note_ticks:
-                            window = 80
-                            window_notes = [n for n in note_ons if abs(n["tick"] - nt) < window]
-                            window_pitches = [n["pitch"] for n in window_notes]
-                            
-                            inferred_name = infer_chord_name(window_pitches)
-                            if inferred_name != "-":
-                                text_events.append({
-                                    "tick": nt,
-                                    "type": "text",
-                                    "text": inferred_name,
-                                    "inferred": True
-                                })
+                    # Map text events by their tick for quick lookup
+                    text_by_tick = {te["tick"]: te["text"] for te in text_events}
                     
-                    for te in text_events:
-                        chord_tick = te["tick"]
-                        chord_name = te["text"]
-                        inferred = te.get("inferred", False)
+                    # Process every canonical note strike tick
+                    keysig = parse_rpp_keysig(rpp_content) or "C"
+                    
+                    for nt in canonical_note_ticks:
+                        chord_name = text_by_tick.get(nt)
+                        inferred = False
                         
-                        same_tick_notes = [no for no in note_ons if abs(no["tick"] - chord_tick) <= 120]
+                        same_tick_notes = [no for no in note_ons if abs(no["tick"] - nt) <= 120]
                         played_pitches = [no["pitch"] for no in same_tick_notes]
                         
+                        if not chord_name:
+                            # Infer chord name from notes
+                            if played_pitches:
+                                inferred_name = infer_chord_name(played_pitches, key=keysig)
+                                if inferred_name != "-":
+                                    chord_name = inferred_name
+                                    inferred = True
+                        
+                        if not chord_name:
+                            continue # skip if we have no chord name and cannot infer one
+                            
                         duration_ticks = 960 * 4 # Default 4 tempos
                         
                         if same_tick_notes:
                             max_dur = 0
                             for no in same_tick_notes:
-                                offs = [nf for nf in note_offs if nf["tick"] > chord_tick and nf["pitch"] == no["pitch"]]
+                                offs = [nf for nf in note_offs if nf["tick"] > nt and nf["pitch"] == no["pitch"]]
                                 if offs:
-                                    dur = offs[0]["tick"] - chord_tick
+                                    dur = offs[0]["tick"] - nt
                                     if dur > max_dur:
                                         max_dur = dur
                             if max_dur > 0:
                                 duration_ticks = max_dur
                         
-                        beat_in_item = chord_tick / ppq
+                        beat_in_item = nt / ppq
                         item_start_beat = current_track["item_pos"] * (bpm / 60.0)
                         proj_beat = item_start_beat + beat_in_item * (bpm / current_track["item_bpm"])
                         
@@ -303,7 +301,19 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                         duration_beats = (duration_ticks / ppq) * (bpm / current_track["item_bpm"])
                         duration_beats = round(duration_beats * 2) / 2
                         
-                        # Validate pitches
+                        # Detect automatic inversion if not already specified as a slash chord
+                        from core.chord_theory import parse_chord_name, NOTE_TO_PITCH, FLAT_KEYS, PITCH_TO_NOTE_FLAT, PITCH_TO_NOTE_SHARP
+                        chord_info = parse_chord_name(chord_name)
+                        if not chord_info.bass:
+                            root_pc = NOTE_TO_PITCH.get(chord_info.root)
+                            if root_pc is not None and played_pitches:
+                                bass_pitch = min(played_pitches)
+                                bass_pc = bass_pitch % 12
+                                if bass_pc != root_pc:
+                                    note_map = PITCH_TO_NOTE_FLAT if keysig in FLAT_KEYS else PITCH_TO_NOTE_SHARP
+                                    bass_note = note_map.get(bass_pc, PITCH_TO_NOTE_SHARP[bass_pc])
+                                    chord_name = f"{chord_name}/{bass_note}"
+                                    
                         match_res = None
                         if played_pitches:
                             match_res = match_chord(chord_name, played_pitches)
@@ -363,7 +373,8 @@ def format_arrangement_message(
     regions: list[ReaperRegion],
     chords: list[ChordEntry] = None,
     debug_chords: bool = False,
-    audio_link: str | None = None
+    audio_link: str | None = None,
+    midi_key: str | None = None
 ) -> str:
     """
     Formata o mapa de arranjo em MarkdownV2 para o Telegram,
@@ -417,7 +428,7 @@ def format_arrangement_message(
                 else:
                     chord_display = f"?{entry.name}"
             else:
-                chord_display = chord_to_roman(entry.name, metadata.key)
+                chord_display = chord_to_roman(entry.name, midi_key or metadata.key)
                 
             nominal_starts[nb] = (chord_display, sync)
 
@@ -441,7 +452,7 @@ def format_arrangement_message(
                         else:
                             chord_display = f"?{entry.name}"
                     else:
-                        chord_display = chord_to_roman(entry.name, metadata.key)
+                        chord_display = chord_to_roman(entry.name, midi_key or metadata.key)
                     return chord_display, "", False
         return None, "", False
 
@@ -490,7 +501,7 @@ def format_arrangement_message(
                 if is_change:
                     parts.append(sync + label)
                 else:
-                    parts.append("/")
+                    parts.append("%")
         return " ".join(parts)
 
     for r in regions:

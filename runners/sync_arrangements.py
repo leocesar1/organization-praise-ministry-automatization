@@ -34,9 +34,11 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
         regions = parse_rpp_regions(rpp_text)
         
         # Tenta obter o tom a partir dos metadados MIDI do RPP
+        midi_keysig = "C"
         try:
             from core.reaper_parser import parse_rpp_keysig
             keysig = parse_rpp_keysig(rpp_text)
+            midi_keysig = keysig or "C"
             if keysig:
                 logger.info(f"Tom extraído dos metadados MIDI do RPP: '{keysig}' (anterior era '{metadata.key}')")
                 metadata.key = keysig
@@ -84,7 +86,8 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             regions, 
             chords=chords, 
             debug_chords=validate_chords,
-            audio_link=audio_link
+            audio_link=audio_link,
+            midi_key=midi_keysig
         )
         
         if validate_chords:

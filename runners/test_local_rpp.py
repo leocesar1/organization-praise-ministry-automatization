@@ -11,14 +11,14 @@ def test_local_file(file_path: str):
         print(f"Failed to read file: {e}")
         return
 
-    # Mock metadata from file name
-    # "Seu Sangue [Elite] - A - Fernandinho - 161BPM - 4.4.rpp"
-    folder_name = "Seu Sangue [Elite] _ A _ Fernandinho _ 161BPM _ 4.4"
+    import os
+    folder_name = os.path.splitext(os.path.basename(file_path))[0]
     metadata = parse_music_metadata(folder_name)
     
     # Override key using RPP keysig
     from core.reaper_parser import parse_rpp_keysig
     keysig = parse_rpp_keysig(content)
+    midi_key = keysig or "C"
     if keysig:
         print(f"Tom extraído dos metadados RPP: '{keysig}' (anterior: '{metadata.key}')")
         metadata.key = keysig
@@ -37,7 +37,7 @@ def test_local_file(file_path: str):
     print("-" * 75)
     for entry in chords:
         if entry.match:
-            grau = chord_to_roman(entry.name, metadata.key)
+            grau = chord_to_roman(entry.name, midi_key)
             expected_notes = ", ".join(PITCH_TO_NOTE[p] for p in entry.match.expected)
             played_notes = ", ".join(PITCH_TO_NOTE[p % 12] for p in entry.match.played)
             status_icon = "✅ OK" if entry.match.status == "ok" else ("⚠️ PARTIAL" if entry.match.status == "partial" else "❌ MISMATCH")
@@ -49,11 +49,11 @@ def test_local_file(file_path: str):
     print("-" * 75)
 
     print("\nVisualização no modo normal (Graus Harmônicos):")
-    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False, audio_link="https://t.me/c/123456789/42")
+    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False, audio_link="https://t.me/c/123456789/42", midi_key=midi_key)
     print(msg_normal)
 
     print("\nVisualização no modo diagnóstico (Marcadores de erro):")
-    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True, audio_link="https://t.me/c/123456789/42")
+    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True, audio_link="https://t.me/c/123456789/42", midi_key=midi_key)
     print(msg_debug)
 
 if __name__ == "__main__":

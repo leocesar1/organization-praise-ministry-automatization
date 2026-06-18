@@ -12,6 +12,13 @@ PITCH_TO_NOTE = {
     6: "F#", 7: "G", 8: "G#", 9: "A", 10: "A#", 11: "B"
 }
 
+PITCH_TO_NOTE_SHARP = PITCH_TO_NOTE
+PITCH_TO_NOTE_FLAT = {
+    0: "C", 1: "Db", 2: "D", 3: "Eb", 4: "E", 5: "F",
+    6: "Gb", 7: "G", 8: "Ab", 9: "A", 10: "Bb", 11: "B"
+}
+FLAT_KEYS = {"F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm"}
+
 # Supported chord qualities and their intervals in semitones relative to root
 QUALITY_INTERVALS = {
     "": [0, 4, 7],               # Major
@@ -284,9 +291,9 @@ def chord_to_roman(chord_name: str, key: str) -> str:
 
     return roman_chord
 
-def infer_chord_name(played_pitches: list[int]) -> str:
+def infer_chord_name(played_pitches: list[int], key: str | None = None) -> str:
     """
-    Infers the chord name from played MIDI pitches.
+    Infers the chord name from played MIDI pitches, considering the key signature.
     """
     played_classes = frozenset({p % 12 for p in played_pitches})
     if not played_classes:
@@ -295,9 +302,11 @@ def infer_chord_name(played_pitches: list[int]) -> str:
     best_chord = "-"
     best_score = 0.0
     
-    # Try all possible notes as roots, and all qualities
-    for root_name, root_pitch in NOTE_TO_PITCH.items():
-        # Avoid duplicate checks for flats/sharps if they map to same pitch
+    note_map = PITCH_TO_NOTE_FLAT if key in FLAT_KEYS else PITCH_TO_NOTE_SHARP
+    
+    # Try all possible pitch classes as roots (0-11)
+    for root_pitch in range(12):
+        root_name = note_map.get(root_pitch, PITCH_TO_NOTE_SHARP[root_pitch])
         for quality, intervals in QUALITY_INTERVALS.items():
             expected = frozenset({(root_pitch + interval) % 12 for interval in intervals})
             # Check intersection
