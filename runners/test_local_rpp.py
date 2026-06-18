@@ -49,11 +49,11 @@ def test_local_file(file_path: str):
     print("-" * 75)
 
     print("\nVisualização no modo normal (Graus Harmônicos):")
-    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False)
+    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False, audio_link="https://t.me/c/123456789/42")
     print(msg_normal)
 
     print("\nVisualização no modo diagnóstico (Marcadores de erro):")
-    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True)
+    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True, audio_link="https://t.me/c/123456789/42")
     print(msg_debug)
 
 if __name__ == "__main__":

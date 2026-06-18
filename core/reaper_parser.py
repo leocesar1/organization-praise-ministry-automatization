@@ -232,25 +232,42 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                     note_ons = [ev for ev in events if ev["type"] == "note_on"]
                     note_offs = [ev for ev in events if ev["type"] == "note_off"]
                     
+                    # Group note_ons to find canonical note strike ticks
+                    note_ticks = sorted(list(set(no["tick"] for no in note_ons)))
+                    canonical_note_ticks = []
+                    for nt in note_ticks:
+                        if not canonical_note_ticks or nt - canonical_note_ticks[-1] > 80:
+                            canonical_note_ticks.append(nt)
+                    
+                    # Align text events to the closest canonical note-on tick within 960 ticks (1 beat)
+                    for te in text_events:
+                        chord_tick = te["tick"]
+                        if canonical_note_ticks:
+                            closest_note_tick = min(canonical_note_ticks, key=lambda nt: abs(nt - chord_tick))
+                            if abs(closest_note_tick - chord_tick) <= 960:
+                                te["tick"] = closest_note_tick
+                                
+                    # Deduplicate text events by tick (keep the first if multiple align to same tick)
+                    text_events.sort(key=lambda t: t["tick"])
+                    unique_text_events = []
+                    for te in text_events:
+                        if not unique_text_events or te["tick"] - unique_text_events[-1]["tick"] > 80:
+                            unique_text_events.append(te)
+                    text_events = unique_text_events
+
                     # If we have no text events, but we have note events, we can infer chords from note groups
                     if not text_events and note_ons:
                         # Group notes that start close to each other (e.g. within 40 ticks)
-                        note_ons_sorted = sorted(note_ons, key=lambda n: n["tick"])
                         ticks_seen = set()
-                        for no in note_ons_sorted:
-                            t = no["tick"]
-                            window = 40
-                            if any(abs(t - ts) < window for ts in ticks_seen):
-                                continue
-                            ticks_seen.add(t)
-                            
-                            window_notes = [n for n in note_ons if abs(n["tick"] - t) < window]
+                        for nt in canonical_note_ticks:
+                            window = 80
+                            window_notes = [n for n in note_ons if abs(n["tick"] - nt) < window]
                             window_pitches = [n["pitch"] for n in window_notes]
                             
                             inferred_name = infer_chord_name(window_pitches)
                             if inferred_name != "-":
                                 text_events.append({
-                                    "tick": t,
+                                    "tick": nt,
                                     "type": "text",
                                     "text": inferred_name,
                                     "inferred": True
@@ -261,7 +278,7 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                         chord_name = te["text"]
                         inferred = te.get("inferred", False)
                         
-                        same_tick_notes = [no for no in note_ons if abs(no["tick"] - chord_tick) <= 40]
+                        same_tick_notes = [no for no in note_ons if abs(no["tick"] - chord_tick) <= 120]
                         played_pitches = [no["pitch"] for no in same_tick_notes]
                         
                         duration_ticks = 960 * 4 # Default 4 tempos
@@ -281,7 +298,10 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                         item_start_beat = current_track["item_pos"] * (bpm / 60.0)
                         proj_beat = item_start_beat + beat_in_item * (bpm / current_track["item_bpm"])
                         
+                        # Round beat and duration to the nearest 0.5 beat
+                        proj_beat = round(proj_beat * 2) / 2
                         duration_beats = (duration_ticks / ppq) * (bpm / current_track["item_bpm"])
+                        duration_beats = round(duration_beats * 2) / 2
                         
                         # Validate pitches
                         match_res = None
@@ -342,7 +362,8 @@ def format_arrangement_message(
     metadata: MusicMetadata,
     regions: list[ReaperRegion],
     chords: list[ChordEntry] = None,
-    debug_chords: bool = False
+    debug_chords: bool = False,
+    audio_link: str | None = None
 ) -> str:
     """
     Formata o mapa de arranjo em MarkdownV2 para o Telegram,
@@ -527,5 +548,8 @@ def format_arrangement_message(
         tot_min = int(total_seconds) // 60
         tot_seg = int(total_seconds) % 60
         msg += f"\n*\\(Duração Total: {tot_min:02d}:{tot_seg:02d}\\)*"
+        
+    if audio_link:
+        msg += f"\n\n🎧 *[Ver Arquivos de Áudio]({escape(audio_link)})*"
         
     return msg

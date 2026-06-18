@@ -73,7 +73,19 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             print("-" * 75)
             
         # Formata a mensagem para o Telegram
-        msg_text = format_arrangement_message(metadata, regions, chords=chords, debug_chords=validate_chords)
+        audio_link = None
+        audio_msg_id = existing_entry.get("message_id")
+        if audio_msg_id:
+            chat_clean = str(bot.chat_id).replace("-100", "")
+            audio_link = f"https://t.me/c/{chat_clean}/{audio_msg_id}"
+
+        msg_text = format_arrangement_message(
+            metadata, 
+            regions, 
+            chords=chords, 
+            debug_chords=validate_chords,
+            audio_link=audio_link
+        )
         
         if validate_chords:
             # Em modo de validação, evitamos publicar/salvar no Telegram
