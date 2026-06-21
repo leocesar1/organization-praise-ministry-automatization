@@ -112,10 +112,11 @@ class OneDriveClient:
             file_name = file["name"]
             file_size = file.get("size", 0)
             
-            # Limite do Telegram Bot API é 50MB (usaremos 49.5MB por segurança)
             if file_size > 49.5 * 1024 * 1024:
-                logger.warning(f"⚠️ O arquivo {file_name} excede o limite de 50MB do Telegram (Tamanho: {file_size / 1024 / 1024:.2f}MB). Pulando...")
-                continue
+                logger.warning(
+                    f"⚠️ {file_name} é grande ({file_size / 1024 / 1024:.1f} MB). "
+                    f"Será comprimido antes do envio."
+                )
                 
             logger.info(f"Baixando {file_name}...")
             content = self.download_file(file_id)

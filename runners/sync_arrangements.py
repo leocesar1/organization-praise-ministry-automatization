@@ -10,21 +10,21 @@ from core.reaper_parser import parse_rpp_regions, format_arrangement_message
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: OneDriveStorage, force_update: bool = False, validate_chords: bool = False):
+def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: OneDriveStorage, force_update: bool = False, validate_chords: bool = False) -> tuple[str | None, list]:
     metadata = parse_music_metadata(folder_name)
     existing_entry = storage.get_synced_info(folder_id, metadata.name)
     existing_txt_link = existing_entry.get("arrangement_txt_link") or existing_entry.get("arrangement_message_id")
     
     if existing_txt_link and not force_update and not validate_chords:
         logger.debug(f"Pula {metadata.name} - arranjo já sincronizado")
-        return existing_txt_link
+        return existing_txt_link, []
 
     try:
         # Busca e baixa o arquivo .rpp no OneDrive
         rpp_name, rpp_content = onedrive.get_rpp_file(folder_id)
         if not rpp_content:
             logger.warning(f"⚠️ Arquivo .rpp não encontrado para {metadata.name}")
-            return None
+            return None, []
             
         logger.info(f"Processando arranjo para {metadata.name} a partir de {rpp_name}...")
         
@@ -37,7 +37,7 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             
         if not regions:
             logger.warning(f"⚠️ Nenhuma região encontrada no arquivo .rpp para {metadata.name}")
-            return None
+            return None, []
             
         # Parseia as cifras (se existirem)
         chords = None
@@ -129,22 +129,22 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             storage.mark_arrangement_synced(folder_id, txt_link, metadata=metadata)
             logger.info(f"✅ Arranjo de '{metadata.name}' processado (txt_link={txt_link})")
             
-            # Se a mensagem original da música (áudios) já existe, atualiza a legenda dela para incluir o link
+            # Se a mensagem original da música (áudios) já existe, atualiza a legenda dela para incluir o link e a estrutura
             audio_msg_id = existing_entry.get("message_id")
             if audio_msg_id:
                 try:
                     logger.info(f"Atualizando a legenda da mensagem de áudio original: {audio_msg_id}")
-                    new_caption = bot.make_caption(metadata, map_url=txt_link)
+                    new_caption = bot.make_caption(metadata, map_url=txt_link, regions=regions)
                     bot.edit_message_caption(audio_msg_id, new_caption)
                 except Exception as e:
                     logger.warning(f"Não foi possível atualizar a legenda da música original: {e}")
                     
-            return txt_link
+            return txt_link, regions
             
     except Exception as e:
         logger.error(f"Erro ao processar arranjo de {metadata.name}: {e}")
         
-    return None
+    return None, []
 
 def main(test_mode: bool = False, limit: int = None, force_update: bool = False, validate_chords: bool = False, folder: str = None):
     onedrive = OneDriveClient()

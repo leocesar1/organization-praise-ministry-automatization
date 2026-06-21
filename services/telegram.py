@@ -3,6 +3,10 @@ import logging
 from typing import Dict, List
 from core.models import MusicMetadata
 from default.default import get_Credentials
+from services.audio_compressor import compress_files_to_fit
+
+# 48 MB — limite preventivo antes de enviar ao Telegram (limite real é 50 MB por arquivo)
+TELEGRAM_MAX_TOTAL_BYTES = 48 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ class TelegramBot:
             text = text.replace(char, f'\\{char}')
         return text
 
-    def make_caption(self, metadata: MusicMetadata, map_url: str = None) -> str:
+    def make_caption(self, metadata: MusicMetadata, map_url: str = None, regions: list = None) -> str:
         caption = f"🎶 Música: *{self.escape_markdown(metadata.name)}*\n"
         caption += f"🎤 Intérprete: *{self.escape_markdown(metadata.artist)}*\n"
         caption += f"🎼 Tom Original: *{self.escape_markdown(metadata.key)}*\n"
@@ -37,6 +41,14 @@ class TelegramBot:
             
         if metadata.instrument:
             caption += f"🎸 Instrumento: *{self.escape_markdown(metadata.instrument)}*\n"
+
+        if regions:
+            caption += f"\n📋 *Estrutura / Arranjo:*\n"
+            for region in regions:
+                minutos = int(region.start_seconds) // 60
+                segundos = int(region.start_seconds) % 60
+                time_str = f"{minutos:02d}:{segundos:02d}"
+                caption += f"`{time_str}` {self.escape_markdown(region.name)}\n"
             
         if map_url:
             caption += f"\n📋 *[Baixar Mapa Harmônico]({map_url})*\n"
@@ -62,56 +74,53 @@ class TelegramBot:
             parse_mode="MarkdownV2"
         )
 
-    def send_audio_group(self, metadata: MusicMetadata, files: Dict[str, bytes], map_url: str = None) -> int:
-        """Sends a group of audio files and returns the message ID of the first message."""
+    def send_audio_group(self, metadata: MusicMetadata, files: Dict[str, bytes], map_url: str = None, regions: list = None) -> int:
+        """Envia um grupo de áudios e retorna o message_id da primeira mensagem.
+        
+        Aplica compressão preventiva se o total de bytes exceder TELEGRAM_MAX_TOTAL_BYTES.
+        O envio é sempre feito como media group (nunca individualmente).
+        """
         if not files:
             raise ValueError("Nenhum arquivo para enviar")
-            
+
+        # --- Compressão preventiva ---
+        total_bytes = sum(len(v) for v in files.values())
+        total_mb = total_bytes / 1024 / 1024
+        if total_bytes > TELEGRAM_MAX_TOTAL_BYTES:
+            logger.warning(
+                f"⚠️ Total de áudios de '{metadata.name}' ({total_mb:.1f} MB) "
+                f"excede o limite de {TELEGRAM_MAX_TOTAL_BYTES / 1024 / 1024:.0f} MB. "
+                f"Aplicando compressão..."
+            )
+            files = compress_files_to_fit(files, max_total_bytes=TELEGRAM_MAX_TOTAL_BYTES)
+        else:
+            logger.debug(f"Total de áudios de '{metadata.name}': {total_mb:.1f} MB — dentro do limite.")
+
+        # --- Monta as mídias ---
         audio_medias = []
         is_first = True
         
         for filename, content in files.items():
-            caption = self.make_caption(metadata, map_url) if is_first else None
-            
-            # Construir nome de arquivo completo para carregamento individual
+            caption = self.make_caption(metadata, map_url, regions=regions) if is_first else None
             complete_filename = f"{metadata.name} - {filename}"
             media_content = (complete_filename, content)
-            
             media = self.make_input_media_audio(filename, media_content, caption=caption, metadata=metadata)
             audio_medias.append(media)
             is_first = False
             
-        # O telegram tem limite de 10 mídias por group. Se houver mais, precisa paginar.
-        # Mas vamos assumir que são < 10 para o caso de uso.
+        # O Telegram tem limite de 10 mídias por grupo
         if len(audio_medias) > 10:
             logger.warning("Mais de 10 arquivos. Enviando apenas os 10 primeiros no mesmo grupo.")
             audio_medias = audio_medias[:10]
-            
-        try:
-            result = self.bot.send_media_group(
-                self.chat_id, 
-                media=audio_medias, 
-                timeout=900, 
-                message_thread_id=self.topic_id
-            )
-            return result[0].message_id
-        except Exception as e:
-            logger.error(f"Erro ao enviar media group, tentando individual: {e}")
-            first_msg_id = None
-            for i, media in enumerate(audio_medias):
-                res = self.bot.send_audio(
-                    self.chat_id,
-                    audio=media.media,
-                    caption=media.caption,
-                    title=media.title,
-                    performer=media.performer,
-                    parse_mode="MarkdownV2",
-                    message_thread_id=self.topic_id,
-                    timeout=900
-                )
-                if i == 0:
-                    first_msg_id = res.message_id
-            return first_msg_id
+
+        # --- Envia como grupo ---
+        result = self.bot.send_media_group(
+            self.chat_id,
+            media=audio_medias,
+            timeout=900,
+            message_thread_id=self.topic_id
+        )
+        return result[0].message_id
 
     def send_document(self, filename: str, content: str, message_thread_id: int) -> int:
         """Sends a document and returns the message_id."""
