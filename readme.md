@@ -2,7 +2,7 @@
 
 Este projeto tem como objetivo automatizar o processo de backup e compartilhamento das trilhas (multitracks, renders, vozes e instrumentos) e mapas de arranjo do Ministério de Louvor. 
 
-Ele varre uma pasta específica do OneDrive contendo os áudios e arquivos do Reaper (`.rpp`) e os publica automaticamente em Tópicos distintos no Telegram (um para arquivos de áudio e outro para mapas de arranjo), gerando um banco de dados inteligente para garantir consistência e evitar postagens duplicadas.
+Ele varre uma pasta específica do OneDrive contendo os áudios e arquivos do Reaper (`.rpp`), enviando os áudios para um Tópico no Telegram e fazendo upload dos mapas harmônicos no OneDrive, vinculando-os automaticamente na legenda da mensagem da música. Isso gera um banco de dados inteligente para garantir consistência e evitar postagens duplicadas.
 
 ## Estrutura do Projeto
 
@@ -38,8 +38,7 @@ Crie um arquivo chamado `credentials.json` na raiz do projeto copiando a estrutu
    ```bash
    python get_telegram_ids.py
    ```
-3. O bot agora publica mapas de arranjo em um tópico separado. Descubra o ID desse tópico e adicione em `arrangement_topic_id` nas configurações do Telegram.
-4. Mande uma mensagem qualquer dentro do tópico desejado no Telegram e o terminal imprimirá os IDs para você copiar e colar.
+3. Mande uma mensagem qualquer dentro do tópico desejado no Telegram e o terminal imprimirá os IDs para você copiar e colar.
 
 > **Atenção:** O campo `storage_message_id` deve ficar em branco (`""`). Ele será preenchido automaticamente pelo script na primeira vez que rodar!
 

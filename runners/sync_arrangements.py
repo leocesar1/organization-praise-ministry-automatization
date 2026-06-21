@@ -137,35 +137,22 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             logger.info("Modo de validação ativo: publicação no Telegram evitada.")
             return True
 
-        # Publica ou atualiza no Telegram
-        msg_id = None
-        if existing_msg_id:
-            try:
-                logger.info(f"Editando mensagem de arranjo existente: msg_id={existing_msg_id}")
-                bot.edit_text_message(existing_msg_id, msg_text)
-                msg_id = existing_msg_id
-            except Exception as e:
-                logger.warning(f"Não foi possível editar a mensagem {existing_msg_id} ({e}). Enviando uma nova.")
-                
-        if not msg_id:
-            logger.info(f"Enviando novo mapa de arranjo para o tópico: {bot.arrangement_topic_id}")
-            msg_id = bot.send_text_message(msg_text, bot.arrangement_topic_id)
-            
-        if msg_id:
-            storage.mark_arrangement_synced(folder_id, msg_id, metadata=metadata)
-            logger.info(f"✅ Arranjo de '{metadata.name}' sincronizado com sucesso! (msg_id={msg_id})")
+        # Publica ou atualiza no Telegram (Removido: Agora apenas retornamos o txt_link)
+        if txt_link:
+            storage.mark_arrangement_synced(folder_id, txt_link, metadata=metadata)
+            logger.info(f"✅ Arranjo de '{metadata.name}' processado (txt_link={txt_link})")
             
             # Se a mensagem original da música (áudios) já existe, atualiza a legenda dela para incluir o link
             audio_msg_id = existing_entry.get("message_id")
             if audio_msg_id:
                 try:
                     logger.info(f"Atualizando a legenda da mensagem de áudio original: {audio_msg_id}")
-                    new_caption = bot.make_caption(metadata, arrangement_message_id=msg_id)
+                    new_caption = bot.make_caption(metadata, map_url=txt_link)
                     bot.edit_message_caption(audio_msg_id, new_caption)
                 except Exception as e:
                     logger.warning(f"Não foi possível atualizar a legenda da música original: {e}")
                     
-            return msg_id
+            return txt_link
             
     except Exception as e:
         logger.error(f"Erro ao processar arranjo de {metadata.name}: {e}")

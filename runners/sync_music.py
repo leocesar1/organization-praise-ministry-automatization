@@ -43,19 +43,19 @@ def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = Fals
             logger.info(f"Processando nova música: {folder_name}")
             metadata = parse_music_metadata(folder_name)
             
-            # 1. Sincroniza o arranjo primeiro para obter o ID da mensagem do arranjo (se houver e não for pulado)
-            arrangement_msg_id = None
+            # 1. Sincroniza o arranjo primeiro para obter o link do mapa (se houver e não for pulado)
+            map_url = None
             if with_arrangement:
                 try:
                     from runners.sync_arrangements import sync_arrangement_for_folder
                     # Passa force_update=False por padrão para evitar re-downloads desnecessários
-                    arrangement_msg_id = sync_arrangement_for_folder(folder_id, folder_name, onedrive, bot, storage, force_update=False)
+                    map_url = sync_arrangement_for_folder(folder_id, folder_name, onedrive, bot, storage, force_update=False)
                 except Exception as e:
                     logger.error(f"Erro ao sincronizar arranjo para {metadata.name}: {e}")
 
             # 2. Obtém os renders e envia o grupo de áudio contendo o link na legenda
             render_files = onedrive.get_renders(folder_id)
-            message_id = bot.send_audio_group(metadata, render_files, arrangement_message_id=arrangement_msg_id)
+            message_id = bot.send_audio_group(metadata, render_files, map_url=map_url)
             
             if message_id:
                 storage.mark_synced(folder_id, message_id, metadata=metadata)

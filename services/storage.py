@@ -58,7 +58,7 @@ class OneDriveStorage:
         existing = data.get(folder_id, {})
         data[folder_id] = {
             "message_id": message_id,
-            "arrangement_message_id": existing.get("arrangement_message_id"),
+            "arrangement_txt_link": existing.get("arrangement_txt_link") or existing.get("arrangement_message_id"),
             "music_name": metadata.name,
             "artist": metadata.artist,
             "key": metadata.key,
@@ -70,10 +70,10 @@ class OneDriveStorage:
         }
         self.save(data)
 
-    def mark_arrangement_synced(self, folder_id: str, arrangement_message_id: int, metadata=None) -> None:
+    def mark_arrangement_synced(self, folder_id: str, arrangement_txt_link: str, metadata=None) -> None:
         data = self.load()
         if folder_id in data:
-            data[folder_id]["arrangement_message_id"] = arrangement_message_id
+            data[folder_id]["arrangement_txt_link"] = arrangement_txt_link
             if metadata:  # atualiza metadados se fornecidos
                 data[folder_id]["music_name"] = metadata.name
                 data[folder_id]["artist"] = metadata.artist
@@ -86,7 +86,7 @@ class OneDriveStorage:
             if metadata:
                 data[folder_id] = {
                     "message_id": None,
-                    "arrangement_message_id": arrangement_message_id,
+                    "arrangement_txt_link": arrangement_txt_link,
                     "music_name": metadata.name,
                     "artist": metadata.artist,
                     "key": metadata.key,
@@ -99,7 +99,7 @@ class OneDriveStorage:
             else:
                 data[folder_id] = {
                     "message_id": None,
-                    "arrangement_message_id": arrangement_message_id,
+                    "arrangement_txt_link": arrangement_txt_link,
                     "music_name": "Desconhecido",
                     "status": "success"
                 }
@@ -112,7 +112,7 @@ class OneDriveStorage:
             "status": "error",
             "error": str(error_msg),
             "message_id": existing.get("message_id"),
-            "arrangement_message_id": existing.get("arrangement_message_id")
+            "arrangement_txt_link": existing.get("arrangement_txt_link") or existing.get("arrangement_message_id")
         }
         if metadata:
             entry["music_name"] = metadata.name
