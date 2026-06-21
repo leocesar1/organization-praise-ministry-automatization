@@ -103,6 +103,20 @@ Se você quer forçar o re-envio de apenas **uma música específica**, você po
 python -m runners.remove_from_db "Nome da Música"
 ```
 
+### F) Fluxo Inverso de Cifras (TXT → RPP)
+Esta nova feature permite que o usuário edite o arquivo de texto (`.txt`) exportado com o mapa harmônico no OneDrive e, com um único comando, atualize o arquivo `.rpp` correspondente. O script cria uma trilha MIDI chamada "Cifras" no final do arquivo Reaper contendo os acordes mapeados em suas posições corretas de tempo e compasso. 
+Suporta a leitura de graus relativos e também de cifras absolutas.
+
+Para executar o script informando a pasta da música no OneDrive:
+```bash
+python -m runners.txt_to_rpp --folder "Bom perfume _ G _ Gabi Sampaio _ 71BPM _ 4.4"
+```
+
+O script localizará a música no OneDrive, lerá o `.txt` editado na subpasta `Mapas`, e fará a injeção ou substituição inteligente do bloco `<ITEM>` MIDI na faixa `Cifras` preservando as demais configurações da track. Em seguida, fará o **upload automático e sobrescreverá** o `.rpp` original na nuvem.
+
+> **Nota:** Caso queira gerar um arquivo local para testes sem afetar o projeto na nuvem, você pode passar a flag `--output`:
+> `python -m runners.txt_to_rpp --folder "Nome da Pasta" --output "meu_teste.rpp"`
+
 ## Tratamento de Nomes Suportado
 
 O sistema entende dois padrões principais de pastas e arquivos no OneDrive:

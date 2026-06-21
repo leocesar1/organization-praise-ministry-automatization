@@ -18,7 +18,7 @@ def test_primeira_essencia():
     
     for item in music_list:
         # if "primeira essencia" in item.get("name", "").lower():
-        if "a benção" in item.get("name", "").lower():
+        if "bom perfume" in item.get("name", "").lower():
             folder_id = item["id"]
             folder_name = item["name"]
             print(f"Testando: {folder_name}")

@@ -185,3 +185,17 @@ class OneDriveClient:
         data = response.json()
         return data.get("webUrl", "")
 
+    def upload_file(self, filename: str, content: bytes, folder_id: str) -> str:
+        """
+        Faz upload de um arquivo arbitrário para um folder_id específico e sobrescreve se existir.
+        """
+        url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/content"
+        headers = self.headers.copy()
+        headers["Content-Type"] = "application/octet-stream"
+        
+        response = requests.put(url, headers=headers, data=content)
+        response.raise_for_status()
+        
+        data = response.json()
+        return data.get("webUrl", "")
+
