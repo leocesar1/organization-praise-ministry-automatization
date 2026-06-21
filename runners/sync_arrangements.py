@@ -12,13 +12,12 @@ logger = logging.getLogger(__name__)
 
 def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: OneDriveStorage, force_update: bool = False, validate_chords: bool = False):
     metadata = parse_music_metadata(folder_name)
-    data = storage.load()
-    existing_entry = data.get(folder_id, {})
-    existing_msg_id = existing_entry.get("arrangement_message_id")
+    existing_entry = storage.get_synced_info(folder_id, metadata.name)
+    existing_txt_link = existing_entry.get("arrangement_txt_link") or existing_entry.get("arrangement_message_id")
     
-    if existing_msg_id and not force_update and not validate_chords:
+    if existing_txt_link and not force_update and not validate_chords:
         logger.debug(f"Pula {metadata.name} - arranjo já sincronizado")
-        return existing_msg_id
+        return existing_txt_link
 
     try:
         # Busca e baixa o arquivo .rpp no OneDrive
@@ -86,13 +85,10 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
 
         sections = build_harmonic_map(metadata, regions, chords, tempo_map, midi_key=midi_keysig)
         
-        safe_name = re.sub(r'[^a-z0-9_]', '', metadata.name.lower().replace(' ', '_'))
-        safe_artist = re.sub(r'[^a-z0-9_]', '', metadata.artist.lower().replace(' ', '_'))
-        
         # 1. Generate and upload JSON
         sections_dict = [asdict(s) for s in sections]
         json_content = json.dumps(sections_dict, indent=2, ensure_ascii=False)
-        json_filename = f"{safe_name}_{safe_artist}_map.json"
+        json_filename = f"{folder_id}.json"
         
         try:
             json_link = onedrive.upload_json_file(json_filename, json_content)
@@ -103,7 +99,7 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
 
         # 2. Generate and upload TXT (a partir dos dados extraídos)
         txt_content = format_harmonic_txt(metadata, sections)
-        txt_filename = f"{safe_name}_{safe_artist}.txt"
+        txt_filename = f"{folder_id}.txt"
         
         try:
             txt_link = onedrive.upload_txt_file(txt_filename, txt_content)

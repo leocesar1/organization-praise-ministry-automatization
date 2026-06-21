@@ -76,14 +76,19 @@ class OneDriveClient:
 
     def get_folder_children(self, folder_id: str, filter_name: str = None) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/me/drive/items/{folder_id}/children"
-        response = requests.get(url, headers=self.headers)
-        response.raise_for_status()
-        children = response.json().get("value", [])
+        all_children = []
         
-        if filter_name:
-            children = [c for c in children if c.get("name") == filter_name]
+        while url:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            data = response.json()
+            all_children.extend(data.get("value", []))
+            url = data.get("@odata.nextLink")
             
-        return children
+        if filter_name:
+            all_children = [c for c in all_children if c.get("name") == filter_name]
+            
+        return all_children
 
     def download_file(self, file_id: str) -> bytes:
         """Download file content by its ID."""

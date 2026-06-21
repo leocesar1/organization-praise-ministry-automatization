@@ -19,25 +19,35 @@ class OneDriveStorage:
             
         try:
             children = self.onedrive.get_folder_children(self.folder_id, filter_name=self.filename)
-            if not children:
+            
+            # Find the exact match to avoid "music_database.json 1"
+            exact_match = None
+            for child in children:
+                if child["name"] == f"{self.filename}.json" or child["name"] == self.filename:
+                    exact_match = child
+                    break
+                    
+            if not exact_match:
+                # Se realmente não existir, retornamos vazio
                 self._cache = {}
                 return self._cache
                 
-            file_id = children[0]["id"]
+            file_id = exact_match["id"]
             content = self.onedrive.download_file(file_id)
             self._cache = json.loads(content.decode("utf-8"))
         except Exception as e:
-            logger.error(f"Erro ao carregar {self.filename} do OneDrive: {e}")
-            self._cache = {}
+            logger.error(f"Erro fatal ao carregar {self.filename} do OneDrive: {e}")
+            raise Exception(f"Falha ao carregar o banco de dados. Abortando para evitar sobrescrever dados: {e}")
             
         return self._cache
 
     def save(self, data: dict) -> None:
         sorted_data = dict(sorted(data.items(), key=lambda x: x[1]['music_name'].lower()))
-        json_content = json.dumps(sorted_data, indent=4, ensure_ascii=False)
-        
+        json_content = json.dumps(data, indent=2, ensure_ascii=False)
         try:
-            url = f"{self.onedrive.base_url}/me/drive/items/{self.folder_id}:/{self.filename}:/content"
+            # Garante que o arquivo salvo tenha a extensão correta (.json) caso não esteja no self.filename
+            save_name = f"{self.filename}.json" if not self.filename.endswith(".json") else self.filename
+            url = f"{self.onedrive.base_url}/me/drive/items/{self.folder_id}:/{save_name}:/content"
             headers = self.onedrive.headers.copy()
             headers["Content-Type"] = "application/json; charset=utf-8"
             
@@ -49,9 +59,13 @@ class OneDriveStorage:
             
         self._cache = sorted_data
 
-    def is_synced(self, folder_id: str) -> bool:
+    def is_synced(self, folder_id: str, music_name: str = None) -> bool:
         data = self.load()
         return folder_id in data
+
+    def get_synced_info(self, folder_id: str, music_name: str = None) -> dict:
+        data = self.load()
+        return data.get(folder_id, {})
 
     def mark_synced(self, folder_id: str, message_id: int, metadata) -> None:
         data = self.load()

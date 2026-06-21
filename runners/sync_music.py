@@ -31,7 +31,13 @@ def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = Fals
         if folder and folder.lower() not in folder_name.lower():
             continue
             
-        if storage.is_synced(folder_id):
+        try:
+            metadata = parse_music_metadata(folder_name)
+        except Exception as e:
+            logger.error(f"Erro ao analisar nome da pasta {folder_name}: {e}")
+            continue
+
+        if storage.is_synced(folder_id, music_name=metadata.name):
             logger.debug(f"Pula {folder_name} - já sincronizada")
             # Se for solicitado o arranjo, podemos tentar sincronizar/atualizar mesmo se a música já estiver sincronizada
             if with_arrangement:

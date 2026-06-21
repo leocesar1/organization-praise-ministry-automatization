@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from core.models import MusicMetadata
 
 INSTRUMENTS = {
@@ -65,6 +66,8 @@ def parse_music_metadata(folder_name: str) -> MusicMetadata:
     except ValueError:
         pass
     
+    name = unicodedata.normalize('NFC', name.strip())
+    artist = unicodedata.normalize('NFC', artist.strip())
     compass = normalize_compass(compass_str)
     
     return MusicMetadata(
