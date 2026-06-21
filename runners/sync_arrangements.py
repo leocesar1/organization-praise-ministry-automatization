@@ -3,14 +3,14 @@ import logging
 from tqdm import tqdm
 from services.onedrive import OneDriveClient
 from services.telegram import TelegramBot
-from services.storage import TelegramStorage
+from services.storage import OneDriveStorage
 from core.name_parser import parse_music_metadata
 from core.reaper_parser import parse_rpp_regions, format_arrangement_message
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: TelegramStorage, force_update: bool = False, validate_chords: bool = False):
+def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneDriveClient, bot: TelegramBot, storage: OneDriveStorage, force_update: bool = False, validate_chords: bool = False):
     metadata = parse_music_metadata(folder_name)
     data = storage.load()
     existing_entry = data.get(folder_id, {})
@@ -69,7 +69,9 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
                     expected_notes = ", ".join(PITCH_TO_NOTE[p] for p in entry.match.expected)
                     played_notes = ", ".join(PITCH_TO_NOTE[p % 12] for p in entry.match.played)
                     status_icon = "✅ OK" if entry.match.status == "ok" else ("⚠️ PARTIAL" if entry.match.status == "partial" else "❌ MISMATCH")
-                    print(f"{grau:<8} | {entry.name:<8} | {{{expected_notes}}:<18} | {{{played_notes}}:<18} | {status_icon}")
+                    expected_str = f"{{{expected_notes}}}"
+                    played_str = f"{{{played_notes}}}"
+                    print(f"{grau:<8} | {entry.name:<8} | {expected_str:<18} | {played_str:<18} | {status_icon}")
                 else:
                     print(f"{'-':<8} | {entry.name:<8} | {'-':<18} | {'-':<18} | ❓ UNKNOWN")
             print("-" * 75)
@@ -81,13 +83,53 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
             chat_clean = str(bot.chat_id).replace("-100", "")
             audio_link = f"https://t.me/c/{chat_clean}/{audio_msg_id}"
 
+        from core.reaper_parser import parse_rpp_tempo_map
+        tempo_map = parse_rpp_tempo_map(rpp_text, metadata.bpm)
+
+        # Gera o arquivo TXT
+        from core.harmonic_map import build_harmonic_map
+        from core.harmonic_layout import format_harmonic_txt
+        import re
+        import json
+        from dataclasses import asdict
+
+        sections = build_harmonic_map(metadata, regions, chords, tempo_map, midi_key=midi_keysig)
+        
+        safe_name = re.sub(r'[^a-z0-9_]', '', metadata.name.lower().replace(' ', '_'))
+        safe_artist = re.sub(r'[^a-z0-9_]', '', metadata.artist.lower().replace(' ', '_'))
+        
+        # 1. Generate and upload JSON
+        sections_dict = [asdict(s) for s in sections]
+        json_content = json.dumps(sections_dict, indent=2, ensure_ascii=False)
+        json_filename = f"{safe_name}_{safe_artist}_map.json"
+        
+        try:
+            json_link = onedrive.upload_json_file(json_filename, json_content)
+            logger.info(f"✅ Arquivo {json_filename} enviado para o OneDrive.")
+        except Exception as e:
+            logger.error(f"Erro ao fazer upload do JSON: {e}")
+            json_link = None
+
+        # 2. Generate and upload TXT (a partir dos dados extraídos)
+        txt_content = format_harmonic_txt(metadata, sections)
+        txt_filename = f"{safe_name}_{safe_artist}.txt"
+        
+        try:
+            txt_link = onedrive.upload_txt_file(txt_filename, txt_content)
+            logger.info(f"✅ Arquivo {txt_filename} enviado para o OneDrive.")
+        except Exception as e:
+            logger.error(f"Erro ao fazer upload do TXT: {e}")
+            txt_link = None
+
         msg_text = format_arrangement_message(
             metadata, 
             regions, 
             chords=chords, 
             debug_chords=validate_chords,
             audio_link=audio_link,
-            midi_key=midi_keysig
+            midi_key=midi_keysig,
+            txt_link=txt_link,
+            json_link=json_link
         )
         
         if validate_chords:
@@ -135,7 +177,7 @@ def main(test_mode: bool = False, limit: int = None, force_update: bool = False,
     onedrive.authenticate()
     
     bot = TelegramBot()
-    storage = TelegramStorage(bot)
+    storage = OneDriveStorage(onedrive)
     
     logger.info("Recuperando lista de músicas do OneDrive...")
     music_list = onedrive.get_file_list()

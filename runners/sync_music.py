@@ -3,7 +3,7 @@ import logging
 from tqdm import tqdm
 from services.onedrive import OneDriveClient
 from services.telegram import TelegramBot
-from services.storage import TelegramStorage
+from services.storage import OneDriveStorage
 from core.name_parser import parse_music_metadata
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -15,7 +15,7 @@ def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = Fals
     onedrive.authenticate()
     
     bot = TelegramBot()
-    storage = TelegramStorage(bot)
+    storage = OneDriveStorage(onedrive)
     
     logger.info("Recuperando lista de arquivos do OneDrive...")
     music_list = onedrive.get_file_list()

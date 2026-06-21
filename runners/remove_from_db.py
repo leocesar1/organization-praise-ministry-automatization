@@ -1,14 +1,15 @@
 import argparse
 import logging
-from services.telegram import TelegramBot
-from services.storage import TelegramStorage
+from services.storage import OneDriveStorage
+from services.onedrive import OneDriveClient
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 def remove_from_db(search_term: str):
-    bot = TelegramBot()
-    storage = TelegramStorage(bot)
+    onedrive = OneDriveClient()
+    onedrive.authenticate()
+    storage = OneDriveStorage(onedrive)
     
     data = storage.load()
     if not data:

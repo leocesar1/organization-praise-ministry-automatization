@@ -48,12 +48,15 @@ def test_local_file(file_path: str):
             print(f"{'-':<8} | {entry.name:<8} | {'-':<18} | {'-':<18} | ❓ UNKNOWN")
     print("-" * 75)
 
+    from core.reaper_parser import parse_rpp_tempo_map
+    tempo_map = parse_rpp_tempo_map(content, metadata.bpm)
+
     print("\nVisualização no modo normal (Graus Harmônicos):")
-    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False, audio_link="https://t.me/c/123456789/42", midi_key=midi_key)
+    msg_normal = format_arrangement_message(metadata, regions, chords=chords, debug_chords=False, audio_link="https://t.me/c/123456789/42", midi_key=midi_key, tempo_map=tempo_map)
     print(msg_normal)
 
     print("\nVisualização no modo diagnóstico (Marcadores de erro):")
-    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True, audio_link="https://t.me/c/123456789/42", midi_key=midi_key)
+    msg_debug = format_arrangement_message(metadata, regions, chords=chords, debug_chords=True, audio_link="https://t.me/c/123456789/42", midi_key=midi_key, tempo_map=tempo_map)
     print(msg_debug)
 
 if __name__ == "__main__":

@@ -17,6 +17,49 @@ class ReaperRegion:
     start_seconds: float
     end_seconds: float = 0.0
 
+@dataclass
+class TempoChange:
+    time: float
+    bpm: float
+    beat: float
+
+class TempoMap:
+    def __init__(self, changes: list[TempoChange], default_bpm: float):
+        self.changes = sorted(changes, key=lambda c: c.time)
+        self.default_bpm = default_bpm
+
+    def time_to_beat(self, time: float) -> float:
+        if not self.changes or time < self.changes[0].time:
+            return time * (self.default_bpm / 60.0)
+            
+        last_c = self.changes[0]
+        for c in self.changes:
+            if c.time > time:
+                break
+            last_c = c
+            
+        return last_c.beat + (time - last_c.time) * (last_c.bpm / 60.0)
+
+def parse_rpp_tempo_map(rpp_content: str, default_bpm: float) -> TempoMap:
+    tempo_pattern = re.compile(r'^\s*PT\s+([\d.]+)\s+([\d.]+)', re.MULTILINE)
+    changes = []
+    
+    current_beat = 0.0
+    last_time = 0.0
+    last_bpm = default_bpm
+    
+    for match in tempo_pattern.finditer(rpp_content):
+        t = float(match.group(1))
+        b = float(match.group(2))
+        
+        current_beat += (t - last_time) * (last_bpm / 60.0)
+        changes.append(TempoChange(time=t, bpm=b, beat=current_beat))
+        
+        last_time = t
+        last_bpm = b
+        
+    return TempoMap(changes, default_bpm)
+
 def parse_rpp_keysig(rpp_content: str) -> str | None:
     """
     Parseia a Key Signature do arquivo .rpp.
@@ -111,24 +154,27 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
     tracks = []
     lines = rpp_content.splitlines()
     
-    current_track = None
+    
     in_midi = False
     midi_depth = 0
     current_tick = 0
     ppq = 960
     current_item_pos = 0.0
+    current_track = None
     
     i = 0
     while i < len(lines):
         line = lines[i].strip()
         
         if line.startswith("<TRACK"):
-            current_track = {"name": "", "events": [], "item_pos": 0.0, "item_bpm": bpm}
+            if current_track is not None:
+                tracks.append(current_track)
+            current_track = {"name": "", "events": [], "item_pos": 0.0, "item_bpm": bpm, "chords": []}
             in_midi = False
             current_item_pos = 0.0
             
         elif current_track is not None:
-            if line.startswith("NAME "):
+            if line.startswith("NAME ") and not current_track["name"]:
                 name_match = re.match(r'^NAME\s+"([^"]*)"|NAME\s+([^\s]+)', line)
                 if name_match:
                     val1 = name_match.group(1)
@@ -341,11 +387,16 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                         entry.duration = extended_dur
                         chords_extended.append(entry)
                         
-                    current_track["chords"] = chords_extended
-                    tracks.append(current_track)
-                current_track = None
+                    if chords_extended:
+                        current_track["chords"].extend(chords_extended)
+                    current_track["events"] = []
+                    
+                
                 
         i += 1
+
+    if current_track is not None:
+        tracks.append(current_track)
 
     if not tracks:
         return []
@@ -374,7 +425,9 @@ def format_arrangement_message(
     chords: list[ChordEntry] = None,
     debug_chords: bool = False,
     audio_link: str | None = None,
-    midi_key: str | None = None
+    midi_key: str | None = None,
+    txt_link: str | None = None,
+    json_link: str | None = None
 ) -> str:
     """
     Formata o mapa de arranjo em MarkdownV2 para o Telegram,
@@ -559,6 +612,13 @@ def format_arrangement_message(
         tot_min = int(total_seconds) // 60
         tot_seg = int(total_seconds) % 60
         msg += f"\n*\\(Duração Total: {tot_min:02d}:{tot_seg:02d}\\)*"
+
+    if txt_link or json_link:
+        msg += "\n"
+        if txt_link:
+            msg += f"\n📄 *[Baixar Mapa Harmônico \\(TXT\\)]({escape(txt_link)})*"
+        if json_link:
+            msg += f"\n🛠 *[Baixar Mapa Harmônico \\(JSON\\)]({escape(json_link)})*"
         
     if audio_link:
         msg += f"\n\n🎧 *[Ver Arquivos de Áudio]({escape(audio_link)})*"

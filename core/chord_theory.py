@@ -23,9 +23,11 @@ FLAT_KEYS = {"F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb", "Dm", "Gm", "Cm", "Fm", "B
 QUALITY_INTERVALS = {
     "": [0, 4, 7],               # Major
     "m": [0, 3, 7],              # Minor
+    "min": [0, 3, 7],            # Minor alias
     "7": [0, 4, 7, 10],          # Dominant 7th
     "maj7": [0, 4, 7, 11],       # Major 7th
     "m7": [0, 3, 7, 10],         # Minor 7th
+    "min7": [0, 3, 7, 10],       # Minor 7th alias
     "dim": [0, 3, 6],            # Diminished
     "dim7": [0, 3, 6, 9],        # Diminished 7th
     "aug": [0, 4, 8],            # Augmented
@@ -36,6 +38,12 @@ QUALITY_INTERVALS = {
     "m9": [0, 3, 7, 10, 14],     # Minor 9th
     "6": [0, 4, 7, 9],           # Major 6th
     "m6": [0, 3, 7, 9],          # Minor 6th
+    "7M": [0, 4, 7, 11],         # Major 7th alias
+    "7(9)": [0, 4, 7, 10, 14],   # Dominant 7(9)
+    "9sus4": [0, 5, 7, 10, 14],  # 9sus4
+    "m7(b5)": [0, 3, 6, 10],     # Half-diminished
+    "°": [0, 3, 6],              # Dim alias
+    "+": [0, 4, 8],              # Aug alias
 }
 
 ROMAN_NUMERALS = {
@@ -83,6 +91,12 @@ QUALITY_SUPERSCRIPT: dict[str, str] = {
     "6": "⁶",
     "m6": "⁶",
     "min6": "⁶",
+    "7M": "⁷ᴹ",
+    "7(9)": "⁷⁽⁹⁾",
+    "9sus4": "⁹ˢᵘˢ⁴",
+    "m7(b5)": "⁷⁽♭⁵⁾",
+    "°": "°",
+    "+": "⁺",
 }
 
 @dataclass

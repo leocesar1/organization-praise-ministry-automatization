@@ -136,3 +136,52 @@ class OneDriveClient:
         response = requests.patch(url, headers=self.headers, json=payload)
         response.raise_for_status()
 
+    def get_or_create_folder(self, folder_name: str, parent_id: str = "A9BCF86E0D3403C2!367937") -> str:
+        """Obtém o ID da pasta, ou a cria se não existir."""
+        children = self.get_folder_children(parent_id, filter_name=folder_name)
+        if children:
+            return children[0]["id"]
+            
+        # Criar a pasta
+        url = f"{self.base_url}/me/drive/items/{parent_id}/children"
+        payload = {
+            "name": folder_name,
+            "folder": {},
+            "@microsoft.graph.conflictBehavior": "rename"
+        }
+        response = requests.post(url, headers=self.headers, json=payload)
+        response.raise_for_status()
+        return response.json()["id"]
+
+    def upload_txt_file(self, filename: str, content: str, parent_id: str = "A9BCF86E0D3403C2!367937") -> str:
+        """
+        Faz upload de um arquivo .txt e retorna o webUrl do item.
+        """
+        folder_id = self.get_or_create_folder("mapas", parent_id=parent_id)
+        
+        url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/content"
+        headers = self.headers.copy()
+        headers["Content-Type"] = "text/plain; charset=utf-8"
+        
+        response = requests.put(url, headers=headers, data=content.encode("utf-8"))
+        response.raise_for_status()
+        
+        data = response.json()
+        return data.get("webUrl", "")
+
+    def upload_json_file(self, filename: str, content: str, parent_id: str = "A9BCF86E0D3403C2!367937") -> str:
+        """
+        Faz upload de um arquivo .json e retorna o webUrl do item.
+        """
+        folder_id = self.get_or_create_folder("mapas", parent_id=parent_id)
+        
+        url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/content"
+        headers = self.headers.copy()
+        headers["Content-Type"] = "application/json; charset=utf-8"
+        
+        response = requests.put(url, headers=headers, data=content.encode("utf-8"))
+        response.raise_for_status()
+        
+        data = response.json()
+        return data.get("webUrl", "")
+
