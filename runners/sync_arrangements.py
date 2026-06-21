@@ -33,17 +33,8 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
         rpp_text = rpp_content.decode("utf-8", errors="ignore")
         regions = parse_rpp_regions(rpp_text)
         
-        # Tenta obter o tom a partir dos metadados MIDI do RPP
-        midi_keysig = "C"
-        try:
-            from core.reaper_parser import parse_rpp_keysig
-            keysig = parse_rpp_keysig(rpp_text)
-            midi_keysig = keysig or "C"
-            if keysig:
-                logger.info(f"Tom extraído dos metadados MIDI do RPP: '{keysig}' (anterior era '{metadata.key}')")
-                metadata.key = keysig
-        except Exception as e:
-            logger.warning(f"Não foi possível obter tom do RPP: {e}")
+        # O tom da música será o extraído do nome da pasta
+        midi_keysig = metadata.key
             
         if not regions:
             logger.warning(f"⚠️ Nenhuma região encontrada no arquivo .rpp para {metadata.name}")
@@ -159,7 +150,7 @@ def sync_arrangement_for_folder(folder_id: str, folder_name: str, onedrive: OneD
         
     return None
 
-def main(test_mode: bool = False, limit: int = None, force_update: bool = False, validate_chords: bool = False):
+def main(test_mode: bool = False, limit: int = None, force_update: bool = False, validate_chords: bool = False, folder: str = None):
     onedrive = OneDriveClient()
     onedrive.authenticate()
     
@@ -176,6 +167,9 @@ def main(test_mode: bool = False, limit: int = None, force_update: bool = False,
             
         folder_id = item["id"]
         folder_name = item["name"]
+        
+        if folder and folder.lower() not in folder_name.lower():
+            continue
         
         success = sync_arrangement_for_folder(
             folder_id=folder_id,
@@ -205,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int, default=None, help="Processa no máximo N arranjos")
     parser.add_argument("--update", action="store_true", help="Força a atualização de arranjos já sincronizados")
     parser.add_argument("--validate-chords", action="store_true", help="Valida a escrita das cifras comparando texto com as notas tocadas e exibe graus no terminal")
+    parser.add_argument("--folder", type=str, default=None, help="Filtra e processa apenas uma pasta específica (pelo nome)")
     args = parser.parse_args()
     
-    main(test_mode=args.test, limit=args.limit, force_update=args.update, validate_chords=args.validate_chords)
+    main(test_mode=args.test, limit=args.limit, force_update=args.update, validate_chords=args.validate_chords, folder=args.folder)

@@ -97,6 +97,9 @@ def chord_to_midi_pitches(chord_name: str, octave: int = 4) -> list[int]:
         from core.chord_theory import NOTE_TO_PITCH
         bass_pitch_class = NOTE_TO_PITCH.get(info.bass)
         
+    from core.chord_theory import NOTE_TO_PITCH
+    root_pitch_class = NOTE_TO_PITCH.get(info.root)
+        
     for pc in pitch_classes:
         pitch = base_midi + pc
         
@@ -104,6 +107,9 @@ def chord_to_midi_pitches(chord_name: str, octave: int = 4) -> list[int]:
         if bass_pitch_class is not None and pc == bass_pitch_class:
             pitches.append(pitch - 12)
         else:
+            # Prevent accidental inversions: if a note is lower than the root, bump it up an octave
+            if root_pitch_class is not None and pc < root_pitch_class:
+                pitch += 12
             pitches.append(pitch)
             
     return sorted(pitches)

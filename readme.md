@@ -72,6 +72,9 @@ python -m runners.sync_music
 
 # Sincroniza apenas os áudios (sem processar arquivos Reaper .rpp)
 python -m runners.sync_music --no-arrangement
+
+# Sincroniza apenas uma pasta específica
+python -m runners.sync_music --folder "Nome da Música"
 ```
 
 ### C) Sincronizador de Arranjos (Sync Arrangements)
@@ -83,6 +86,9 @@ python -m runners.sync_arrangements
 
 # Força a re-postagem e re-leitura de todos os arquivos .rpp (editando mensagens existentes)
 python -m runners.sync_arrangements --update
+
+# Sincroniza apenas uma pasta específica (pode ser combinado com --update)
+python -m runners.sync_arrangements --folder "Nome da Música"
 
 # Limita a execução no modo teste
 python -m runners.sync_arrangements --test

@@ -9,7 +9,7 @@ from core.name_parser import parse_music_metadata
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = False):
+def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = False, folder: str = None):
     with_arrangement = not no_arrangement
     onedrive = OneDriveClient()
     onedrive.authenticate()
@@ -28,6 +28,9 @@ def main(test_mode: bool = False, limit: int = None, no_arrangement: bool = Fals
         folder_id = item["id"]
         folder_name = item["name"]
         
+        if folder and folder.lower() not in folder_name.lower():
+            continue
+            
         if storage.is_synced(folder_id):
             logger.debug(f"Pula {folder_name} - já sincronizada")
             # Se for solicitado o arranjo, podemos tentar sincronizar/atualizar mesmo se a música já estiver sincronizada
@@ -85,6 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="Processa apenas 1 música (modo teste)")
     parser.add_argument("--limit", type=int, default=None, help="Processa no máximo N músicas")
     parser.add_argument("--no-arrangement", action="store_true", help="Não sincroniza o mapa de arranjo (.rpp)")
+    parser.add_argument("--folder", type=str, default=None, help="Filtra e processa apenas uma pasta específica (pelo nome)")
     args = parser.parse_args()
     
-    main(test_mode=args.test, limit=args.limit, no_arrangement=args.no_arrangement)
+    main(test_mode=args.test, limit=args.limit, no_arrangement=args.no_arrangement, folder=args.folder)
