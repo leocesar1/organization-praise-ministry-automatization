@@ -161,12 +161,8 @@ def main():
                 
             children = onedrive.get_file_list(mapas_folder_id)
             
-            # We need to construct the expected filename. `sync_arrangements.py` creates it via:
-            from core.name_parser import parse_music_metadata
-            metadata = parse_music_metadata(args.folder)
-            safe_name = re.sub(r'[^a-z0-9_]', '', metadata.name.lower().replace(' ', '_'))
-            safe_artist = re.sub(r'[^a-z0-9_]', '', metadata.artist.lower().replace(' ', '_'))
-            expected_txt_name = f"{safe_name}_{safe_artist}.txt"
+            # The TXT file is named with the folder's ID
+            expected_txt_name = f"{folder_id}.txt"
             
             txt_file_id = None
             for c in children:
