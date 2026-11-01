@@ -100,7 +100,14 @@ Para baixar a pasta completa de uma música (áudios, projeto Reaper `.rpp` e su
 ```
 Ao executar, um formulário flutuante (sempre no topo) lista as músicas do OneDrive. Após a escolha, o script baixa toda a pasta preservando a estrutura de arquivos e abre automaticamente o Finder com o conteúdo baixado.
 
-### E) Sincronizador de Arranjos (Sync Arrangements)
+### E) Upload de Pasta Local + Publicação no Telegram (Atalho do macOS)
+Para enviar uma nova pasta de música que está no seu computador (diretório `40.01 - Sets Ministério de Louvor`) para o OneDrive e já publicá-la no Telegram:
+```bash
+./scripts/upload_and_sync_music.sh
+```
+O script abre um seletor nativo do macOS (NSOpenPanel) posicionado diretamente na sua pasta de projetos, cria a pasta remota no OneDrive com o mesmo nome, faz o upload recursivo de todos os arquivos e subpastas (como `1 _ Renders` e `.rpp`) e já aciona a sincronização automática gerando o banco de dados e a mensagem com áudios e arranjos no Telegram.
+
+### F) Sincronizador de Arranjos (Sync Arrangements)
 Runner focado exclusivamente na extração e publicação de mapas de arranjos a partir dos arquivos `.rpp`. Caso o áudio já esteja no Telegram, o script edita silenciosamente a mensagem original adicionando a estrutura de seções e o link do mapa de arranjo.
 
 ```bash

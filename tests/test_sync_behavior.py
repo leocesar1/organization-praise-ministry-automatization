@@ -362,8 +362,48 @@ class TestSyncBehavior(unittest.TestCase):
             with open(mp3_path, "rb") as f:
                 self.assertEqual(f.read(), b"CONTEUDO_MP3")
 
+    def test_upload_folder_recursive(self):
+        """Testa se upload_folder_recursive percorre arquivos e pastas locais e chama os uploads correspondentes."""
+        import tempfile
+        from runners.upload_music import upload_folder_recursive
+
+        mock_onedrive = MagicMock()
+        mock_onedrive.get_or_create_folder.return_value = "REMOTE_SUB_ID"
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            local_music = os.path.join(tmp_dir, "Musica_Local")
+            os.makedirs(local_music, exist_ok=True)
+            renders_dir = os.path.join(local_music, "1 _ Renders")
+            os.makedirs(renders_dir, exist_ok=True)
+
+            # Arquivo na raiz
+            rpp_file = os.path.join(local_music, "projeto.rpp")
+            with open(rpp_file, "wb") as f:
+                f.write(b"CONTEUDO_RPP")
+
+            # Arquivo na subpasta
+            mp3_file = os.path.join(renders_dir, "Mix.mp3")
+            with open(mp3_file, "wb") as f:
+                f.write(b"CONTEUDO_MP3")
+
+            # Arquivo .DS_Store a ser ignorado
+            ds_store = os.path.join(local_music, ".DS_Store")
+            with open(ds_store, "wb") as f:
+                f.write(b"IGNORAR")
+
+            upload_folder_recursive(mock_onedrive, local_music, "REMOTE_ROOT_ID")
+
+            # Deve criar a subpasta 1 _ Renders
+            mock_onedrive.get_or_create_folder.assert_called_once_with("1 _ Renders", parent_id="REMOTE_ROOT_ID")
+
+            # Deve chamar upload_file para projeto.rpp e Mix.mp3 (e não para .DS_Store)
+            self.assertEqual(mock_onedrive.upload_file.call_count, 2)
+            mock_onedrive.upload_file.assert_any_call("projeto.rpp", b"CONTEUDO_RPP", folder_id="REMOTE_ROOT_ID")
+            mock_onedrive.upload_file.assert_any_call("Mix.mp3", b"CONTEUDO_MP3", folder_id="REMOTE_SUB_ID")
+
 if __name__ == '__main__':
     unittest.main()
+
 
 
 

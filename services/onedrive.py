@@ -213,15 +213,45 @@ class OneDriveClient:
 
     def upload_file(self, filename: str, content: bytes, folder_id: str) -> str:
         """
-        Faz upload de um arquivo arbitrário para um folder_id específico e sobrescreve se existir.
+        Faz upload de um arquivo arbitrário para um folder_id específico.
+        Suporta arquivos pequenos (via PUT direto) e arquivos grandes (via createUploadSession).
         """
-        url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/content"
-        headers = self.headers.copy()
-        headers["Content-Type"] = "application/octet-stream"
-        
-        response = requests.put(url, headers=headers, data=content)
-        response.raise_for_status()
-        
-        data = response.json()
-        return data.get("webUrl", "")
+        # Se for menor que 4MB, faz upload simples direto
+        if len(content) < 4 * 1024 * 1024:
+            url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/content"
+            headers = self.headers.copy()
+            headers["Content-Type"] = "application/octet-stream"
+            response = requests.put(url, headers=headers, data=content)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("webUrl", "")
+
+        # Para arquivos >= 4MB, cria sessão de upload chunked
+        create_session_url = f"{self.base_url}/me/drive/items/{folder_id}:/{filename}:/createUploadSession"
+        session_resp = requests.post(create_session_url, headers=self.headers, json={
+            "item": {"@microsoft.graph.conflictBehavior": "replace"}
+        })
+        session_resp.raise_for_status()
+        upload_url = session_resp.json()["uploadUrl"]
+
+        chunk_size = 10 * 1024 * 1024 # 10 MB por chunk
+        total_size = len(content)
+        start = 0
+
+        while start < total_size:
+            end = min(start + chunk_size, total_size)
+            chunk = content[start:end]
+            headers = {
+                "Content-Length": str(len(chunk)),
+                "Content-Range": f"bytes {start}-{end - 1}/{total_size}"
+            }
+            res = requests.put(upload_url, headers=headers, data=chunk)
+            if res.status_code in (200, 201):
+                return res.json().get("webUrl", "")
+            elif res.status_code == 202:
+                start = end
+            else:
+                res.raise_for_status()
+
+        return ""
 
