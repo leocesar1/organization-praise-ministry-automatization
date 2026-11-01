@@ -230,5 +230,140 @@ class TestSyncBehavior(unittest.TestCase):
         self.assertIn("ID_SEGUNDA_MUSICA", saved_data)
         self.assertEqual(len(saved_data), 2)
 
+    def test_get_renders_filters_non_audio_files(self):
+        """Testa se get_renders filtra arquivos que não são de áudio (ex: .html, .DS_Store, subpastas)."""
+        from services.onedrive import OneDriveClient
+
+        client = OneDriveClient.__new__(OneDriveClient)
+        client.get_folder_children = MagicMock()
+        client.download_file = MagicMock(return_value=b"fake audio data")
+
+        # Mock da subpasta '1 _ Renders'
+        client.get_folder_children.side_effect = [
+            [{"name": "1 _ Renders", "id": "RENDERS_FOLDER_ID"}],
+            [
+                {"id": "file_html", "name": "index.html", "size": 100},
+                {"id": "file_ds", "name": ".DS_Store", "size": 5000},
+                {"id": "file_txt", "name": "leia-me.txt", "size": 200},
+                {"id": "folder_sub", "name": "Subpasta", "folder": {}},
+                {"id": "file_mp3_1", "name": "Mix Geral.mp3", "size": 5000000},
+                {"id": "file_wav", "name": "Voz - Tenor.wav", "size": 8000000},
+                {"id": "file_m4a", "name": "Teclado.M4A", "size": 4000000},
+            ]
+        ]
+
+        renders = client.get_renders("FOLDER_ID_MOCK")
+
+        # Deve conter apenas os 3 arquivos de áudio
+        self.assertEqual(set(renders.keys()), {"Mix Geral.mp3", "Voz - Tenor.wav", "Teclado.M4A"})
+        self.assertNotIn("index.html", renders)
+        self.assertNotIn(".DS_Store", renders)
+        self.assertNotIn("leia-me.txt", renders)
+        self.assertNotIn("Subpasta", renders)
+
+    @patch('runners.list_musics.OneDriveClient')
+    def test_list_musics(self, mock_client_cls):
+        """Testa o runner list_musics retornando lista ordenada e filtrando arquivos da raiz."""
+        from runners.list_musics import list_musics
+
+        mock_client = mock_client_cls.return_value
+        mock_client.get_file_list.return_value = [
+            {"id": "ID_2", "name": "Leão _ C _ Gabriela Rocha _ 70bpm _ 4/4", "folder": {}},
+            {"id": "ID_FILE", "name": "leia_me.txt", "file": {}},
+            {"id": "ID_1", "name": "A Bênção _ G _ Gabriel Guedes _ 68bpm _ 4/4", "folder": {}},
+        ]
+
+        musics = list_musics()
+        self.assertEqual(len(musics), 2)
+        # Ordenado por nome
+        self.assertEqual(musics[0]["id"], "ID_1")
+        self.assertEqual(musics[0]["name"], "A Bênção")
+        self.assertEqual(musics[1]["id"], "ID_2")
+        self.assertEqual(musics[1]["name"], "Leão")
+
+    def test_process_single_folder_with_force(self):
+        """Testa se process_single_folder com force=True atualiza mesmo já estando no storage."""
+        from runners.sync_music import process_single_folder
+
+        mock_onedrive = MagicMock()
+        mock_bot = MagicMock()
+        mock_storage = MagicMock()
+
+        # Configura storage para dizer que já está sincronizada
+        mock_storage.is_synced.return_value = True
+        mock_bot.send_audio_group.return_value = 12345
+        mock_onedrive.get_renders.return_value = {"audio.mp3": b"data"}
+
+        with patch('runners.sync_arrangements.sync_arrangement_for_folder') as mock_sync_arr:
+            mock_sync_arr.return_value = ("http://mapa.link", [{"name": "Intro"}])
+
+            # Chamada sem force -> deve ignorar e retornar False
+            synced_no_force = process_single_folder(
+                folder_id="ID_SYNCED",
+                folder_name="01 - Música Já Sincronizada - C",
+                onedrive=mock_onedrive,
+                bot=mock_bot,
+                storage=mock_storage,
+                with_arrangement=True,
+                force=False
+            )
+            self.assertFalse(synced_no_force)
+            mock_bot.send_audio_group.assert_not_called()
+
+            # Chamada com force -> deve processar e enviar
+            synced_force = process_single_folder(
+                folder_id="ID_SYNCED",
+                folder_name="01 - Música Já Sincronizada - C",
+                onedrive=mock_onedrive,
+                bot=mock_bot,
+                storage=mock_storage,
+                with_arrangement=True,
+                force=True
+            )
+            self.assertTrue(synced_force)
+            mock_bot.send_audio_group.assert_called_once()
+            mock_storage.mark_synced.assert_called_once()
+            mock_sync_arr.assert_called_with(
+                "ID_SYNCED", "01 - Música Já Sincronizada - C", mock_onedrive, mock_bot, mock_storage, force_update=True
+            )
+
+    def test_download_folder_recursive(self):
+        """Testa se download_folder_recursive cria pastas e baixa arquivos locais."""
+        import tempfile
+        from runners.download_music import download_folder_recursive
+
+        mock_onedrive = MagicMock()
+        # Simula estrutura: raiz tem 1 arquivo e 1 subpasta com 1 arquivo
+        mock_onedrive.get_folder_children.side_effect = [
+            [
+                {"id": "FILE_1", "name": "track.rpp", "size": 1024},
+                {"id": "SUB_1", "name": "1 _ Renders", "folder": {}}
+            ],
+            [
+                {"id": "FILE_2", "name": "Mix Geral.mp3", "size": 2048}
+            ]
+        ]
+        mock_onedrive.download_file.side_effect = [
+            b"CONTEUDO_RPP",
+            b"CONTEUDO_MP3"
+        ]
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_dir = os.path.join(tmp_dir, "Minha_Musica")
+            download_folder_recursive(mock_onedrive, "FOLDER_ROOT_ID", dest_dir)
+
+            rpp_path = os.path.join(dest_dir, "track.rpp")
+            mp3_path = os.path.join(dest_dir, "1 _ Renders", "Mix Geral.mp3")
+
+            self.assertTrue(os.path.exists(rpp_path))
+            self.assertTrue(os.path.exists(mp3_path))
+            with open(rpp_path, "rb") as f:
+                self.assertEqual(f.read(), b"CONTEUDO_RPP")
+            with open(mp3_path, "rb") as f:
+                self.assertEqual(f.read(), b"CONTEUDO_MP3")
+
 if __name__ == '__main__':
     unittest.main()
+
+
+

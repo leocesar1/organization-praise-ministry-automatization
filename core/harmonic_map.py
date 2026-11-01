@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from core.models import MusicMetadata
 from core.chord_theory import ChordEntry, chord_to_roman
@@ -47,12 +48,12 @@ def build_harmonic_map(
     # Pre-calculate chord positions
     nominal_starts = {}
     for entry in chords:
-        nb = int(round(entry.beat))
+        nb = math.floor(entry.beat + 0.5)
         dev = entry.beat - nb
         sync = ""
-        if -0.62 <= dev <= -0.38:
+        if dev <= -0.2:
             sync = "←"
-        elif 0.38 <= dev <= 0.62:
+        elif dev >= 0.2:
             sync = "→"
             
         chord_display = chord_to_roman(entry.name, key_to_use)

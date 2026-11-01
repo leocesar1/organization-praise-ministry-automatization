@@ -1,5 +1,6 @@
 import re
 import base64
+import math
 from dataclasses import dataclass
 from core.models import MusicMetadata
 from core.chord_theory import (
@@ -342,10 +343,8 @@ def parse_rpp_chords(rpp_content: str, project_bpm: float) -> list[ChordEntry]:
                         item_start_beat = current_track["item_pos"] * (bpm / 60.0)
                         proj_beat = item_start_beat + beat_in_item * (bpm / current_track["item_bpm"])
                         
-                        # Round beat and duration to the nearest 0.5 beat
-                        proj_beat = round(proj_beat * 2) / 2
+                        # Mantém a precisão flutuante original (sem arredondamento agressivo)
                         duration_beats = (duration_ticks / ppq) * (bpm / current_track["item_bpm"])
-                        duration_beats = round(duration_beats * 2) / 2
                         
                         # Detect automatic inversion if not already specified as a slash chord
                         from core.chord_theory import parse_chord_name, NOTE_TO_PITCH, FLAT_KEYS, PITCH_TO_NOTE_FLAT, PITCH_TO_NOTE_SHARP
@@ -462,12 +461,12 @@ def format_arrangement_message(
     nominal_starts = {}
     if chords:
         for entry in chords:
-            nb = int(round(entry.beat))
+            nb = math.floor(entry.beat + 0.5)
             dev = entry.beat - nb
             sync = ""
-            if -0.62 <= dev <= -0.38:
+            if dev <= -0.2:
                 sync = "←"
-            elif 0.38 <= dev <= 0.62:
+            elif dev >= 0.2:
                 sync = "→"
             
             if debug_chords:

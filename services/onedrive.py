@@ -74,6 +74,13 @@ class OneDriveClient:
             
         return result
 
+    def get_item(self, item_id: str) -> Dict[str, Any]:
+        """Obtém os detalhes e metadados de um item específico por seu ID."""
+        url = f"{self.base_url}/me/drive/items/{item_id}"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
     def get_folder_children(self, folder_id: str, filter_name: str = None) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/me/drive/items/{folder_id}/children"
         all_children = []
@@ -97,8 +104,12 @@ class OneDriveClient:
         response.raise_for_status()
         return response.content
 
+    AUDIO_EXTENSIONS = (
+        ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".aiff", ".wma"
+    )
+
     def get_renders(self, folder_id: str) -> Dict[str, bytes]:
-        """Extrai os arquivos de render da pasta '1 _ Renders'."""
+        """Extrai os arquivos de áudio de render da pasta '1 _ Renders'."""
         subfolders = self.get_folder_children(folder_id, filter_name="1 _ Renders")
         if not subfolders:
             raise FileNotFoundError(f"Pasta '1 _ Renders' não encontrada no id {folder_id}")
@@ -111,6 +122,15 @@ class OneDriveClient:
             file_id = file["id"]
             file_name = file["name"]
             file_size = file.get("size", 0)
+
+            # Ignora subpastas se houver
+            if "folder" in file:
+                continue
+
+            # Ignora arquivos que não são formatos de áudio (ex: .html, .DS_Store, txt, etc.)
+            if not file_name.lower().endswith(self.AUDIO_EXTENSIONS):
+                logger.info(f"Ignorando arquivo não suportado em '1 _ Renders': {file_name}")
+                continue
             
             if file_size > 49.5 * 1024 * 1024:
                 logger.warning(

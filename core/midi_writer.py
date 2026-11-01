@@ -43,6 +43,7 @@ def sections_to_chords(sections: list[HarmonicSection], metadata: MusicMetadata)
                 else:
                     chord_display = beat.chord_roman
                     
+                abs_beat = max(0.0, abs_beat)
                 abs_name = roman_to_chord_name(chord_display, metadata.key)
                 
                 if abs_name and abs_name != "-" and (beat.is_start or abs_name != current_chord_name):
@@ -200,6 +201,8 @@ def chords_to_rpp_midi_item(chords: list[ChordEntry], bpm: float, key: str = "C"
     # 3. Note Off events (e tick_delta 80 pitch 0)
     
     # Create an absolute timeline of events
+    # Somente eventos de texto (e a key signature) são gerados; notas MIDI físicas
+    # não são mais criadas para a faixa "Cifras".
     events = []
     
     # Add key signature at tick 0
@@ -207,18 +210,11 @@ def chords_to_rpp_midi_item(chords: list[ChordEntry], bpm: float, key: str = "C"
     
     for chord in sorted_chords:
         start_tick = int(chord.beat * ppq)
-        end_tick = int((chord.beat + chord.duration) * ppq)
         
         # Text event
         events.append({'tick': start_tick, 'type': 'text', 'text': chord.name})
-        
-        # Note On
-        for pitch in chord.pitches:
-            events.append({'tick': start_tick, 'type': 'note_on', 'pitch': pitch, 'vel': 96})
-            # Note Off
-            events.append({'tick': end_tick, 'type': 'note_off', 'pitch': pitch, 'vel': 0})
             
-    events.sort(key=lambda e: (e['tick'], 0 if e['type'] in ('text', 'keysig') else 1 if e['type'] == 'note_off' else 2))
+    events.sort(key=lambda e: (e['tick'], 0 if e['type'] in ('text', 'keysig') else 1))
     
     for ev in events:
         delta = ev['tick'] - current_tick
@@ -233,18 +229,6 @@ def chords_to_rpp_midi_item(chords: list[ChordEntry], bpm: float, key: str = "C"
             lines.append(f'        <X {delta} 0')
             lines.append(f'          {generate_keysig_event_b64(ev["text"])}')
             lines.append('        >')
-            current_tick = ev['tick']
-            
-        elif ev['type'] == 'note_on':
-            # e delta 90 pitch vel
-            hex_pitch = f"{ev['pitch']:02x}"
-            hex_vel = f"{ev['vel']:02x}"
-            lines.append(f'        E {delta} 90 {hex_pitch} {hex_vel}')
-            current_tick = ev['tick']
-            
-        elif ev['type'] == 'note_off':
-            hex_pitch = f"{ev['pitch']:02x}"
-            lines.append(f'        E {delta} 80 {hex_pitch} 00')
             current_tick = ev['tick']
             
     lines.append('        >') # End SOURCE MIDI

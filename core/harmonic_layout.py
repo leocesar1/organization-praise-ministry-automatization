@@ -9,11 +9,13 @@ def _format_measure_cells(measure: HarmonicMeasure) -> tuple[str, str]:
     chord_parts = []
     beat_parts = []
     
-    # Check if measure is uniform (same chord everywhere, no syncopation except maybe first beat)
+    # Check if measure is uniform (same chord everywhere, no syncopation except on the first beat)
     first_chord = measure.beats[0].chord_roman
+    first_sync = measure.beats[0].sync
     is_uniform = True
-    for b in measure.beats:
-        if b.chord_roman != first_chord or b.sync != "":
+    for idx, b in enumerate(measure.beats):
+        # A sincopação do primeiro tempo não invalida a uniformidade do compasso
+        if b.chord_roman != first_chord or (idx > 0 and b.sync != ""):
             is_uniform = False
             break
             
@@ -25,7 +27,8 @@ def _format_measure_cells(measure: HarmonicMeasure) -> tuple[str, str]:
         return " " + " ".join(chord_parts), " " + "  ".join(beat_parts)
 
     if is_uniform:
-        return f" {first_chord if first_chord else '-'}", " " + "  ".join(["/"] * len(measure.beats))
+        label = f"{first_sync}{first_chord}" if first_chord else '-'
+        return f" {label}", " " + "  ".join(["/"] * len(measure.beats))
         
     for i, b in enumerate(measure.beats):
         label = b.chord_roman if b.chord_roman else "-"

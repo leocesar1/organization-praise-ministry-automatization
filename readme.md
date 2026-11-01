@@ -81,9 +81,26 @@ python -m runners.sync_music --no-arrangement
 
 # Sincroniza apenas uma pasta específica
 python -m runners.sync_music --folder "Nome da Música"
+
+# Força atualização de uma pasta específica por ID
+python -m runners.sync_music --folder-id "<ID_DO_ONEDRIVE>" --force
 ```
 
-### C) Sincronizador de Arranjos (Sync Arrangements)
+### C) Atualização Pontual com Formulário (Atalho do macOS)
+Para atualizar apenas uma música específica de forma interativa via **Atalhos (Shortcuts)** ou terminal:
+```bash
+./scripts/update_one_music.sh
+```
+O script consulta o OneDrive em tempo real, abre um formulário nativo Cocoa (JXA) com a lista de músicas e solicita confirmação explícita antes de forçar o re-download e atualização dos áudios e do mapa de arranjo (.rpp) no Telegram.
+
+### D) Download Completo de Música (Atalho do macOS)
+Para baixar a pasta completa de uma música (áudios, projeto Reaper `.rpp` e subpastas) diretamente para a sua pasta `Downloads` do Mac:
+```bash
+./scripts/download_one_music.sh
+```
+Ao executar, um formulário flutuante (sempre no topo) lista as músicas do OneDrive. Após a escolha, o script baixa toda a pasta preservando a estrutura de arquivos e abre automaticamente o Finder com o conteúdo baixado.
+
+### E) Sincronizador de Arranjos (Sync Arrangements)
 Runner focado exclusivamente na extração e publicação de mapas de arranjos a partir dos arquivos `.rpp`. Caso o áudio já esteja no Telegram, o script edita silenciosamente a mensagem original adicionando a estrutura de seções e o link do mapa de arranjo.
 
 ```bash
